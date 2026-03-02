@@ -160,7 +160,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
             </AppBar>
 
             {/* Sidebar */}
-            <Box component="nav" sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}>
+            <Box component="nav" sx={{ width: { xs:0,sm: drawerWidth }, flexShrink: { sm: 0 } }}>
                 {/* Mobile: temporary */}
                 <Drawer
                     variant="temporary"
@@ -198,13 +198,14 @@ export default function DashboardShell({ children }: { children: React.ReactNode
                 component="main"
                 sx={{
                     flexGrow: 1,
-                    width: { sm: `calc(100% - ${drawerWidth}px)` },
-                    p: 2,
-                    pt: 10,
+                    width: { xs: "100%", sm: `calc(100% - ${drawerWidth}px)` },
+                    p: { xs: 1, sm: 2 },
                     bgcolor: "background.default",
                     minHeight: "100vh",
                 }}
             >
+                {/* ✅ AppBar 높이만큼 자동으로 띄워줌 */}
+                <Toolbar />
                 {children}
             </Box>
         </Box>

@@ -7,7 +7,6 @@ import { AppRouterCacheProvider } from "@mui/material-nextjs/v14-appRouter";
 
 
 import { ThemeSettings } from "./utils/theme/Theme";
-import { CustomizerContext } from "@/app/context/customizerContext";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
     const theme = ThemeSettings();

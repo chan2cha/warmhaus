@@ -150,9 +150,17 @@ export default function InboxClient({
                 </Button>
             </Stack>
 
-            <Card variant="outlined" sx={{ borderRadius: 3 }}>
-                <CardContent sx={{ pb: 0 }}>
-                    <Tabs value={filter} onChange={(_, v) => setFilter(v)} variant="scrollable" scrollButtons="auto">
+            <Card  variant="outlined" sx={{ borderRadius: { xs: 2, sm: 3 }, overflow: "visible" }}>
+                <CardContent sx={{ pb: 0, overflowX: "auto" }}>
+                    <Tabs  value={filter}
+                           onChange={(_, v) => setFilter(v)}
+                           variant="scrollable"
+                           scrollButtons="auto"
+                           allowScrollButtonsMobile
+                           sx={{
+                               minHeight: 40,
+                               "& .MuiTab-root": { minHeight: 40, px: 2, whiteSpace: "nowrap" },
+                           }}>
                         {FILTERS.map((f) => (
                             <Tab key={f.value} value={f.value} label={f.label} />
                         ))}
@@ -212,7 +220,11 @@ export default function InboxClient({
                             </CardActionArea>
 
                             <Box sx={{ px: 2, pb: 2 }}>
-                                <Stack direction="row" spacing={1} flexWrap="wrap">
+                                <Stack direction="row"
+                                       spacing={1}
+                                       flexWrap="wrap"
+                                       sx={{ width: "100%", "& > *": { flexGrow: { xs: 1, sm: 0 }, minWidth: { xs: "48%", sm: "auto" } } }}
+                                >
                                     <Button
                                         size="small"
                                         variant="outlined"
