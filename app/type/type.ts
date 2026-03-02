@@ -1,0 +1,1 @@
+export type Ctx = { params: Promise<{ id: string }> };

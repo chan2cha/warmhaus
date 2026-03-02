@@ -33,6 +33,7 @@ export async function POST(req: Request) {
         budget_raw: payload.budget_raw ?? null,
         channel: payload.channel ?? null,
         source: "google_form",
+
     };
 
     const { data, error } = await supabaseAdmin
@@ -47,3 +48,4 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, lead_id: data.id, created_at: data.created_at });
 }
+
