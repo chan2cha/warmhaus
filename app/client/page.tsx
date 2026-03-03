@@ -214,7 +214,7 @@ export default function PublicFormStepperPage() {
     const [submitting, setSubmitting] = useState(false);
 
     // 필드 DOM ref 맵(포커스/스크롤)
-    const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
+    const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
     const {
         control,
@@ -422,7 +422,7 @@ export default function PublicFormStepperPage() {
                                 <Stack spacing={2}>
                                     <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                                         <Box
-                                            ref={(el) => (fieldRefs.current["name"] = el)}
+                                            ref={(el : HTMLDivElement | null) => {(fieldRefs.current["name"] = el)}}
                                             sx={{ flex: { sm: 1 }, minWidth: 0 }}
                                         >
                                             <Controller
@@ -442,7 +442,9 @@ export default function PublicFormStepperPage() {
                                         </Box>
 
                                         <Box
-                                            ref={(el) => (fieldRefs.current["phone"] = el)}
+                                            ref={(el: HTMLDivElement | null) => {
+                                                fieldRefs.current["phone"] = el
+                                            }}
                                             sx={{ flex: { sm: 2 }, minWidth: 0 }}
                                         >
                                             <Controller
@@ -471,7 +473,9 @@ export default function PublicFormStepperPage() {
                                     <Stack spacing={1.5}>
                                         {/* 우편번호 + 주소찾기 (모바일도 한 줄 고정) */}
                                         <Stack direction="row" spacing={1} alignItems="stretch">
-                                            <Box ref={(el) => (fieldRefs.current["zip_code"] = el)} sx={{ flex: 1, minWidth: 0 }}>
+                                            <Box ref={(el :HTMLDivElement | null) => {
+                                                fieldRefs.current["zip_code"] = el
+                                            }} sx={{ flex: 1, minWidth: 0 }}>
                                                 <Controller
                                                     name="zip_code"
                                                     control={control}
@@ -506,7 +510,9 @@ export default function PublicFormStepperPage() {
                                         ) : null}
 
                                         {/* 상세주소 */}
-                                        <Box ref={(el) => (fieldRefs.current["address_detail"] = el)}>
+                                        <Box ref={(el: HTMLDivElement | null) => {
+                                            fieldRefs.current["address_detail"] = el
+                                        }}>
                                             <Controller
                                                 name="address_detail"
                                                 control={control}
@@ -754,7 +760,7 @@ function CheckboxGroupWithUnknown(props: {
     }, [fieldRefs, name]);
 
     return (
-        <Box ref={(el) => (fieldRefs.current[name] = el)} data-field={name}>
+        <Box ref={(el) => {(fieldRefs.current[name] = el)}} data-field={name}>
             {errors?.[name] ? <Alert severity="error">{errors[name]?.message}</Alert> : null}
 
             <Stack spacing={0.5} sx={{ mt: 1 }}>
