@@ -2,6 +2,10 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useEffect, useCallback } from "react";
+import IconButton from "@mui/material/IconButton";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import { useTopBarActions } from "../components/contexts/topbar-actions"; // 경로 맞추기
 import {
     Alert,
     Box,
@@ -72,12 +76,14 @@ export default function InboxClient({
     initialLeads: Lead[];
     initialError: string;
 }) {
+
     const [leads, setLeads] = useState<Lead[]>(initialLeads);
-    const [filter, setFilter] = useState<string>("NEW");
+    const [filter, setFilter] = useState<string>("ALL");
     const [loading, setLoading] = useState(false);
     const [err, setErr] = useState(initialError);
+    const { setActions, clearActions } = useTopBarActions();
 
-    async function refreshFromApi() {
+    const refreshFromApi = useCallback(async () => {
         setLoading(true);
         setErr("");
         try {
@@ -90,7 +96,16 @@ export default function InboxClient({
         } finally {
             setLoading(false);
         }
-    }
+    }, []);
+
+    useEffect(() => {
+        setActions(
+            <IconButton aria-label="새로고침" onClick={refreshFromApi} disabled={loading} edge="end">
+                <RefreshIcon />
+            </IconButton>
+        );
+        return () => clearActions();
+    }, [setActions, clearActions, refreshFromApi, loading]);
 
     const filtered = useMemo(() => {
         const xs = filter === "ALL" ? leads : leads.filter((l) => (l.status || "NEW") === filter);
@@ -141,32 +156,42 @@ export default function InboxClient({
 
     return (
         <Stack spacing={2}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
-                <Typography variant="h5" fontWeight={900}>
-                    Home
-                </Typography>
-                <Button variant="outlined" onClick={refreshFromApi} disabled={loading}>
-                    {loading ? "새로고침..." : "새로고침"}
-                </Button>
-            </Stack>
 
-            <Card  variant="outlined" sx={{ borderRadius: { xs: 2, sm: 3 }, overflow: "visible" }}>
-                <CardContent sx={{ pb: 0, overflowX: "auto" }}>
-                    <Tabs  value={filter}
-                           onChange={(_, v) => setFilter(v)}
-                           variant="scrollable"
-                           scrollButtons="auto"
-                           allowScrollButtonsMobile
-                           sx={{
-                               minHeight: 40,
-                               "& .MuiTab-root": { minHeight: 40, px: 2, whiteSpace: "nowrap" },
-                           }}>
-                        {FILTERS.map((f) => (
-                            <Tab key={f.value} value={f.value} label={f.label} />
-                        ))}
-                    </Tabs>
-                </CardContent>
-            </Card>
+            <Box
+                sx={{
+                    position: "sticky",
+                    top: 64, // AppBar 높이(기본 64). 모바일 dense면 56
+                    zIndex: 5,
+                    bgcolor: "background.default",
+                    pt: 0.5,
+                    pb: 0.5,
+                }}
+            >
+                <Tabs
+                    value={filter}
+                    onChange={(_, v) => setFilter(v)}
+                    variant="fullWidth"
+                    scrollButtons="auto"
+                    allowScrollButtonsMobile
+                    sx={{
+                        px: 0.5,
+                        minHeight: 34,
+                        "& .MuiTab-root": {
+                            minHeight: 34,
+                            px: 0.5,                     // ✅ 패딩 최소
+                            minWidth: 0,                 // ✅ Tab 최소폭 제한 해제
+                            fontSize: 12,                // ✅ 글자 작게
+                            fontWeight: 800,
+                            lineHeight: 1,
+                        },
+                        "& .MuiTabs-indicator": { height: 2 },
+                    }}
+                >
+                    {FILTERS.map((f) => (
+                        <Tab key={f.value} value={f.value} label={f.label} />
+                    ))}
+                </Tabs>
+            </Box>
 
             {err ? <Alert severity="error">{err}</Alert> : null}
 
@@ -186,21 +211,24 @@ export default function InboxClient({
                         <Card key={l.id} variant="outlined" sx={{ borderRadius: 3 }}>
                             <CardActionArea component={Link} href={`/leads/${l.id}`}>
                                 <CardContent>
-                                    <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
-                                        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                        <Stack direction="row" spacing={1} alignItems="center">
                                             <Chip size="small" label={l.grade || "-"} color={gradeChipColor(l.grade)} />
                                             <Typography fontWeight={900}>{l.name || "(이름없음)"}</Typography>
                                         </Stack>
                                         <Chip size="small" label={sp.label} color={sp.color} />
                                     </Stack>
 
-                                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                                    <Typography sx={{ mt: 0.5, fontWeight: 800 }}>
                                         {l.phone}
                                     </Typography>
 
-                                    <Typography variant="body2" sx={{ mt: 1 }}>
-                                        {l.type} · {l.area} · 예산 {l.budget_raw}
-                                    </Typography>
+                                    <Stack direction="row" spacing={1} sx={{ mt: 0.75 }} alignItems="center">
+                                        <Chip size="small" variant="outlined" label={`예산 ${l.budget_raw || "-"}`} />
+                                        <Typography variant="body2" color="text.secondary">
+                                            {l.type} · {l.area}
+                                        </Typography>
+                                    </Stack>
 
                                     <Typography
                                         variant="body2"
@@ -220,72 +248,75 @@ export default function InboxClient({
                             </CardActionArea>
 
                             <Box sx={{ px: 2, pb: 2 }}>
-                                <Stack direction="row"
-                                       spacing={1}
-                                       flexWrap="wrap"
-                                       sx={{ width: "100%", "& > *": { flexGrow: { xs: 1, sm: 0 }, minWidth: { xs: "48%", sm: "auto" } } }}
+                                <Box
+                                    sx={{
+                                        display: "grid",
+                                        gridTemplateColumns: "1fr 1fr",
+                                        gap: 1,
+                                    }}
                                 >
-                                    <Button
-                                        size="small"
-                                        variant="outlined"
-                                        component="a"
-                                        href={tel}
-                                        disabled={!tel}
-                                        sx={{ flexGrow: { xs: 1, sm: 0 } }}
-                                    >
-                                        전화
-                                    </Button>
+
 
                                     <Button
-                                        size="small"
-                                        variant={isNoAnswer ? "contained" : "outlined"}
-                                        color="warning"
-                                        disabled={isNoAnswer}
-                                        sx={{ flexGrow: { xs: 1, sm: 0 } }}
-                                        onClick={() => setStatusIfChanged(l.id, "NO_ANSWER")}
-                                    >
-                                        {isNoAnswer ? "✓ 부재" : "부재"}
-                                    </Button>
-
-                                    <Button
-                                        size="small"
+                                        fullWidth
                                         variant={isDone ? "contained" : "outlined"}
-                                        color="info"
+                                        color="success"
                                         disabled={isDone}
-                                        sx={{ flexGrow: { xs: 1, sm: 0 } }}
                                         onClick={() => setStatusIfChanged(l.id, "CONSULT_DONE")}
                                     >
                                         {isDone ? "✓ 상담완료" : "상담완료"}
                                     </Button>
 
                                     <Button
-                                        size="small"
+                                        fullWidth
+                                        variant={isNoAnswer ? "contained" : "outlined"}
+                                        color="warning"
+                                        disabled={isNoAnswer}
+                                        onClick={() => setStatusIfChanged(l.id, "NO_ANSWER")}
+                                    >
+                                        {isNoAnswer ? "✓ 부재" : "부재"}
+                                    </Button>
+
+                                    <Button
+                                        fullWidth
                                         variant={isHold ? "contained" : "outlined"}
                                         color="secondary"
                                         disabled={isHold}
-                                        sx={{ flexGrow: { xs: 1, sm: 0 } }}
                                         onClick={() => setStatusIfChanged(l.id, "HOLD")}
                                     >
                                         {isHold ? "✓ 보류" : "보류"}
                                     </Button>
-
                                     <Button
-                                        size="small"
+                                        fullWidth
                                         variant={isRejected ? "contained" : "outlined"}
                                         color="error"
                                         disabled={isRejected}
-                                        sx={{ flexGrow: { xs: 1, sm: 0 } }}
+
                                         onClick={() => setStatusIfChanged(l.id, "REJECTED")}
                                     >
                                         {isRejected ? "✓ 부적합" : "부적합"}
                                     </Button>
-
-                                    {showUndo && (
-                                        <Button size="small" variant="text" sx={{ flexGrow: { xs: 1, sm: 0 } }} onClick={() => undoToNew(l.id)}>
-                                            UNDO → NEW
-                                        </Button>
-                                    )}
-                                </Stack>
+                                </Box>
+                                <Button
+                                    fullWidth
+                                    variant="contained"
+                                    component="a"
+                                    href={tel}
+                                    disabled={!tel}
+                                    sx={{ mt: 1 }}
+                                >
+                                    전화
+                                </Button>
+                                {showUndo && (
+                                    <Button
+                                        size="small"
+                                        variant="text"
+                                        sx={{ mt: 0.5 }}
+                                        onClick={() => undoToNew(l.id)}
+                                    >
+                                       되돌리기
+                                    </Button>
+                                )}
                             </Box>
                         </Card>
                     );

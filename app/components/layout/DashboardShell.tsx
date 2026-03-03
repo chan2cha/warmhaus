@@ -5,12 +5,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
-    AppBar,
     Box,
     CssBaseline,
     Divider,
     Drawer,
-    IconButton,
     List,
     ListItemButton,
     ListItemIcon,
@@ -21,9 +19,11 @@ import {
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 
-import MenuIcon from "@mui/icons-material/Menu";
 import InboxIcon from "@mui/icons-material/Inbox";
 import SettingsIcon from "@mui/icons-material/Settings";
+
+import TopBar from "./TopBar";
+import { TopBarActionsProvider } from "../contexts/topbar-actions";
 
 const DRAWER_FULL = 280;
 const DRAWER_MINI = 72;
@@ -38,9 +38,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
     const pathname = usePathname();
     const theme = useTheme();
 
-    // sm 이상(>=600px)이면 사이드바(고정 or mini), xs는 모바일 drawer
     const isSmUp = useMediaQuery(theme.breakpoints.up("sm"));
-    // lg 이상(>=1200px)이면 full sidebar, 그 미만은 mini
     const isLgUp = useMediaQuery(theme.breakpoints.up("lg"));
 
     const drawerWidth = isLgUp ? DRAWER_FULL : DRAWER_MINI;
@@ -58,7 +56,6 @@ export default function DashboardShell({ children }: { children: React.ReactNode
 
     const drawerContent = (
         <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-            {/* Brand */}
             <Box
                 sx={{
                     px: isMini ? 1 : 2,
@@ -124,90 +121,62 @@ export default function DashboardShell({ children }: { children: React.ReactNode
     const title = pathname === "/" ? "Home" : "Detail";
 
     return (
-        <Box sx={{ display: "flex" }}>
-            <CssBaseline />
+        <TopBarActionsProvider>
+            <Box sx={{ display: "flex" }}>
+                <CssBaseline />
 
-            {/* Top bar */}
-            <AppBar
-                position="fixed"
-                elevation={0}
-                sx={{
-                    width: { sm: `calc(100% - ${drawerWidth}px)` },
-                    ml: { sm: `${drawerWidth}px` },
-                    bgcolor: "background.paper",
-                    color: "text.primary",
-                    borderBottom: "1px solid",
-                    borderColor: "divider",
-                }}
-            >
-                <Toolbar sx={{ gap: 1 }}>
-                    {/* 모바일에서만 햄버거 */}
-                    <IconButton
-                        color="inherit"
-                        edge="start"
-                        onClick={() => setMobileOpen((v) => !v)}
-                        sx={{ mr: 1, display: { sm: "none" } }}
+                <TopBar
+                    title={title}
+                    drawerWidth={drawerWidth}
+                    onOpenMobile={() => setMobileOpen((v) => !v)}
+                />
+
+                {/* Sidebar */}
+                <Box component="nav" sx={{ width: { xs: 0, sm: drawerWidth }, flexShrink: { sm: 0 } }}>
+                    <Drawer
+                        variant="temporary"
+                        open={mobileOpen}
+                        onClose={() => setMobileOpen(false)}
+                        ModalProps={{ keepMounted: true }}
+                        sx={{
+                            display: { xs: "block", sm: "none" },
+                            "& .MuiDrawer-paper": { width: DRAWER_FULL },
+                        }}
                     >
-                        <MenuIcon />
-                    </IconButton>
+                        <Box sx={{ width: DRAWER_FULL }}>{drawerContent}</Box>
+                    </Drawer>
 
-                    <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                        {title}
-                    </Typography>
+                    <Drawer
+                        variant="permanent"
+                        open
+                        sx={{
+                            display: { xs: "none", sm: "block" },
+                            "& .MuiDrawer-paper": {
+                                width: drawerWidth,
+                                boxSizing: "border-box",
+                                overflowX: "hidden",
+                            },
+                        }}
+                    >
+                        {drawerContent}
+                    </Drawer>
+                </Box>
 
-                    <Box sx={{ flex: 1 }} />
-                </Toolbar>
-            </AppBar>
-
-            {/* Sidebar */}
-            <Box component="nav" sx={{ width: { xs:0,sm: drawerWidth }, flexShrink: { sm: 0 } }}>
-                {/* Mobile: temporary */}
-                <Drawer
-                    variant="temporary"
-                    open={mobileOpen}
-                    onClose={() => setMobileOpen(false)}
-                    ModalProps={{ keepMounted: true }}
+                {/* Main */}
+                <Box
+                    component="main"
                     sx={{
-                        display: { xs: "block", sm: "none" },
-                        "& .MuiDrawer-paper": { width: DRAWER_FULL }, // 모바일은 full로
+                        flexGrow: 1,
+                        width: { xs: "100%", sm: `calc(100% - ${drawerWidth}px)` },
+                        p: { xs: 1, sm: 2 },
+                        bgcolor: "background.default",
+                        minHeight: "100vh",
                     }}
                 >
-                    {/* 모바일에서는 mini 숨기고 full로 보여주는 게 편함 */}
-                    <Box sx={{ width: DRAWER_FULL }}>{drawerContent}</Box>
-                </Drawer>
-
-                {/* Desktop/Tablet: permanent */}
-                <Drawer
-                    variant="permanent"
-                    open
-                    sx={{
-                        display: { xs: "none", sm: "block" },
-                        "& .MuiDrawer-paper": {
-                            width: drawerWidth,
-                            boxSizing: "border-box",
-                            overflowX: "hidden",
-                        },
-                    }}
-                >
-                    {drawerContent}
-                </Drawer>
+                    <Toolbar />
+                    {children}
+                </Box>
             </Box>
-
-            {/* Main */}
-            <Box
-                component="main"
-                sx={{
-                    flexGrow: 1,
-                    width: { xs: "100%", sm: `calc(100% - ${drawerWidth}px)` },
-                    p: { xs: 1, sm: 2 },
-                    bgcolor: "background.default",
-                    minHeight: "100vh",
-                }}
-            >
-                {/* ✅ AppBar 높이만큼 자동으로 띄워줌 */}
-                <Toolbar />
-                {children}
-            </Box>
-        </Box>
+        </TopBarActionsProvider>
     );
 }

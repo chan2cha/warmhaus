@@ -17,7 +17,7 @@ import {
     Typography,
     Divider,
     Checkbox,
-    FormControlLabel,
+    FormControlLabel, Chip,
 } from "@mui/material";
 import { useForm, Controller, useWatch ,SubmitHandler} from "react-hook-form";
 import { z } from "zod";
@@ -28,7 +28,11 @@ declare global {
         daum?: any;
     }
 }
-
+const TYPE_OPTIONS = [
+    { value: "LOW", label: "Low (부분공사) / 당분간은 어렵습니다" },
+    { value: "MIDDLE", label: "Middle (올철거)" },
+    { value: "HIGH", label: "High (올철거)" },
+] ;
 const CHANNEL_OPTIONS = [
     { value: "blog", label: "블로그" },
     { value: "instagram", label: "인스타" },
@@ -248,6 +252,7 @@ const FormSchema = z.object({
     // Step0
     name: z.string().min(1, "이름을 입력해주세요."),
     phone: z.string().min(9, "연락처를 입력해주세요."),
+    desired_type: z.string().min(1, "필수 질문입니다."),
     channel: z.string().min(1, "알게 된 경로를 선택해주세요."),
     budget_range: z.string().min(1, "예산 범위를 선택해주세요."),
 
@@ -256,11 +261,11 @@ const FormSchema = z.object({
     address_jibun: z.string().default(""),
     address_detail: z.string().min(1, "상세주소를 입력해주세요."),
 
-    // Step1 (예시: 확장)
+    // Step2 (예시: 확장)
     extension_existing: z.array(z.string()).min(1, "현재 확장부를 선택해주세요."),
     extension_plan: z.array(z.string()).min(1, "확장공사를 선택해주세요."),
 
-    // Step2 (예시: 샷시/도어)
+    // Step3 (예시: 샷시/도어)
     window_work: z.array(z.string()).min(1, "샷시 공사를 선택해주세요."),
     window_work_etc: z.string().default(""),
     window_reform: z.array(z.string()).default([]),
@@ -272,7 +277,7 @@ const FormSchema = z.object({
 
 
 
-    // Step3 (도어/바닥/몰딩/중문/필름)
+    // Step4 (도어/바닥/몰딩/중문/필름)
     floor_demolition: z.array(z.string()).min(1, "바닥 철거 공사를 선택해주세요."),
     floor_demolition_etc: z.string().default(""),
     floor_work: z.array(z.string()).min(1, "바닥 공사를 선택해주세요."),
@@ -286,7 +291,7 @@ const FormSchema = z.object({
     film_work: z.array(z.string()).min(1, "필름 공사를 선택해주세요."),
     film_work_etc: z.string().default(""),
 
-// Step4 (욕실/타일/벽체마감)
+// Step5 (욕실/타일/벽체마감)
     bathroom_work: z.array(z.string()).min(1, "욕실 공사를 선택해주세요."),
     bathroom_work_etc: z.string().default(""),
 
@@ -296,7 +301,7 @@ const FormSchema = z.object({
     wall_finish: z.array(z.string()).min(1, "벽체 마감 공사를 선택해주세요."),
     wall_finish_etc: z.string().default(""),
 
-// Step5 (전기/베란다 벽면/에어컨)
+// Step6 (전기/베란다 벽면/에어컨)
     electrical_work: z.array(z.string()).min(1, "전기 공사를 선택해주세요."),
     electrical_work_etc: z.string().default(""),
 
@@ -307,7 +312,7 @@ const FormSchema = z.object({
     aircon_work: z.array(z.string()).min(1, "에어컨 공사를 선택해주세요."),
     aircon_work_etc: z.string().default(""),
 
-    // Step6
+    // Step7
     furniture_replace: z.array(z.string()).default([]),
     furniture_reform: z.array(z.string()).default([]),
     furniture_none: z.boolean().default(false),
@@ -422,8 +427,8 @@ const steps = [
 // ✅ 각 스텝에서 검증할 필드 목록(여기에 계속 추가하면 됨)
 
 const stepFields: Array<Array<keyof FormValues>> = [
-    ["name", "phone", "channel", "budget_range", "zip_code", "address_detail"],
-    ["extension_existing", "extension_plan"],
+    ["name", "phone","channel", "budget_range", "zip_code", "address_detail"],
+    ["desired_type","extension_existing",  "extension_plan"],
     ["window_work", "window_work_etc","window_reform", "window_reform_etc","door_frame_work",
         "door_frame_work_etc",
         "door_frame_reform",
@@ -494,6 +499,7 @@ export default function PublicFormStepperPage() {
             phone: "",
             channel: "blog",
             budget_range: "4000_5000",
+            desired_type: "",
             zip_code: "",
             address_road: "",
             address_jibun: "",
@@ -774,9 +780,51 @@ export default function PublicFormStepperPage() {
                                     </Step>
                                 ))}
                             </Stepper>
-                            <Typography fontWeight={900} sx={{ display: { xs: "block", sm: "none" }, mb: 1 }}>
-                                {steps[activeStep]}
-                            </Typography>
+                            <Box
+                                sx={{
+                                    display: { xs: "block", sm: "none" },
+                                    mb: 3,                 // ✅ 헤더 ↔ 컨텐츠 크게 분리
+                                    mt: 0.5,
+                                    px: 1.25,
+                                    py: 1.25,
+                                    borderRadius: 2,
+                                    bgcolor: "background.paper",
+                                    border: "1px solid",
+                                    borderColor: "divider",
+                                    boxShadow: 1,          // ✅ 살짝 떠보이게
+                                }}
+                            >
+                                <Stack direction="row" alignItems="baseline" justifyContent="space-between" sx={{ mb: 1 }}>
+                                    <Typography
+                                        fontWeight={900}
+                                        sx={{
+                                            fontSize: 18,
+                                            lineHeight: 1.2,
+                                            pr: 1,
+                                            flex: 1,
+                                            minWidth: 0,
+                                            overflow: "hidden",
+                                            textOverflow: "ellipsis",
+                                            whiteSpace: "nowrap",
+                                        }}
+                                    >
+                                        {steps[activeStep]}
+                                    </Typography>
+
+                                    <Chip
+                                        size="small"
+                                        label={`Step ${activeStep + 1}/${steps.length}`}
+                                        variant="outlined"
+                                        sx={{ fontWeight: 800 }}
+                                    />
+                                </Stack>
+
+                                <Divider sx={{ borderBottomWidth: 2 }} />
+
+                                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                                    아래 항목을 입력/선택한 뒤 “다음”을 눌러주세요.
+                                </Typography>
+                            </Box>
                             {submitErr ? <Alert severity="error">{submitErr}</Alert> : null}
 
                             {/* ----- STEP CONTENTS ----- */}
@@ -866,7 +914,7 @@ export default function PublicFormStepperPage() {
 
                                         {/* 주소찾기 전 안내 */}
                                         {!zipCode ? (
-                                            <Alert severity="info" sx={{ py: 0.5 }}>
+                                            <Alert severity="info" sx={{py: 0.5 }}>
                                                 주소찾기로 주소를 먼저 선택해주세요.
                                             </Alert>
                                         ) : null}
@@ -930,348 +978,545 @@ export default function PublicFormStepperPage() {
                                 </Stack>
                             )}
 
+
                             {activeStep === 1 && (
                                 <Stack spacing={2}>
-                                    <Typography fontWeight={900}>기확장부(현재 확장된 공간) *</Typography>
-                                    <Typography fontWeight={400}>현재 확장되어 있는 공간을 선택해 주세요.</Typography>
-                                    <CheckboxGroupWithUnknown
-                                        name="extension_existing"
-                                        options={EXTENSION_OPTIONS as any}
-                                        control={control}
-                                        errors={errors}
-                                        setValue={setValue}
-                                        fieldRefs={fieldRefs}
-                                    />
+                                    <QuestionBlock title="원하는 타입 *">
+                                        <Box
+                                            ref={(el: HTMLDivElement | null) => {
+                                                fieldRefs.current["desired_type"] = el;
+                                            }}
+                                        >
+                                            {errors?.desired_type ? (
+                                                <Alert severity="error" sx={{ mb: 1 }}>
+                                                    {errors.desired_type.message as any}
+                                                </Alert>
+                                            ) : null}
 
-                                    <Typography fontWeight={900}>확장공사(확장 예정) *</Typography>
-                                    <Typography fontWeight={400}>확장 예정인 공간을 선택해 주세요.</Typography>
-                                    <CheckboxGroupWithUnknown
-                                        name="extension_plan"
-                                        options={[...EXTENSION_OPTIONS] as any}
-                                        control={control}
-                                        errors={errors}
-                                        setValue={setValue}
-                                        fieldRefs={fieldRefs}
-                                    />
+                                            <Controller
+                                                name="desired_type"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <Stack spacing={0.5}>
+                                                        {TYPE_OPTIONS.map((opt) => (
+                                                            <FormControlLabel
+                                                                key={opt.value}
+                                                                control={
+                                                                    <Checkbox
+                                                                        checked={field.value === opt.value}
+                                                                        onChange={() => field.onChange(opt.value)}
+                                                                    />
+                                                                }
+                                                                label={opt.label}
+                                                            />
+                                                        ))}
+                                                    </Stack>
+                                                )}
+                                            />
+                                        </Box>
+                                    </QuestionBlock>
+
+                                    <QuestionBlock
+                                        title="기확장부(현재 확장된 공간) *"
+                                        desc="현재 확장되어 있는 공간을 선택해 주세요."
+                                    >
+                                        <CheckboxGroupWithUnknown
+                                            name="extension_existing"
+                                            options={EXTENSION_OPTIONS as any}
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                        />
+                                    </QuestionBlock>
+
+                                    <QuestionBlock
+                                        title="확장공사(확장 예정) *"
+                                        desc="확장 예정인 공간을 선택해 주세요."
+                                        divider={false}
+                                    >
+                                        <CheckboxGroupWithUnknown
+                                            name="extension_plan"
+                                            options={[...EXTENSION_OPTIONS] as any}
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                        />
+                                    </QuestionBlock>
                                 </Stack>
                             )}
 
                             {activeStep === 2 && (
                                 <Stack spacing={2}>
-                                    <Typography fontWeight={900}>샷시 공사 *</Typography>
-                                    <CheckboxGroupWithUnknown
-                                        name="window_work"
-                                        options={WINDOW_WORK_OPTIONS as any}
-                                        control={control}
-                                        errors={errors}
-                                        setValue={setValue}
-                                        fieldRefs={fieldRefs}
-                                    />
-                                    {/* ✅ 샷시 공사에서 '기타' 선택 시 텍스트 입력 */}
-                                    <EtcTextField whenCheckedIn="window_work" etcName="window_work_etc" control={control} errors={errors} setValue={setValue} fieldRefs={fieldRefs} />
+                                    <QuestionBlock title="샷시 공사 *">
+                                        <CheckboxGroupWithUnknown
+                                            name="window_work"
+                                            options={WINDOW_WORK_OPTIONS as any}
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                        />
+                                        <EtcTextField
+                                            whenCheckedIn="window_work"
+                                            etcName="window_work_etc"
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                        />
+                                    </QuestionBlock>
 
-                                    {/* ✅ 부분교체 선택 시에만 노출 */}
-                                    <WindowReformSection
-                                        control={control}
-                                        errors={errors}
-                                        setValue={setValue}
-                                        fieldRefs={fieldRefs}
-                                    />
-                                    <Typography fontWeight={900}>방문/방문틀 공사 *</Typography>
-                                    <CheckboxGroupWithUnknown
-                                        name="door_frame_work"
-                                        options={DOOR_FRAME_WORK_OPTIONS as any}
-                                        control={control}
-                                        errors={errors}
-                                        setValue={setValue}
-                                        fieldRefs={fieldRefs}
-                                    />
-                                    <EtcTextField whenCheckedIn="door_frame_work" etcName="door_frame_work_etc" control={control} errors={errors} setValue={setValue} fieldRefs={fieldRefs} />
+                                    {/* 부분교체가 아닐 땐 WindowReformSection이 null 반환 */}
+                                    <QuestionBlock
+                                        title="샷시 리폼 *"
+                                        desc="샷시 부분 교체 시 선택사항입니다."
+                                    >
+                                        <WindowReformSection
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                        />
+                                    </QuestionBlock>
 
+                                    <QuestionBlock title="방문/방문틀 공사 *">
+                                        <CheckboxGroupWithUnknown
+                                            name="door_frame_work"
+                                            options={DOOR_FRAME_WORK_OPTIONS as any}
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                        />
+                                        <EtcTextField
+                                            whenCheckedIn="door_frame_work"
+                                            etcName="door_frame_work_etc"
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                        />
+                                    </QuestionBlock>
 
-                                    <DoorFrameReformSection control={control} errors={errors} setValue={setValue} fieldRefs={fieldRefs} />
-
+                                    {/* 부분교체가 아닐 땐 DoorFrameReformSection이 null 반환 */}
+                                    <QuestionBlock
+                                        title="방문/방문틀 리폼 *"
+                                        desc="방문/방문틀 부분 교체 시 선택사항입니다."
+                                        divider={false}
+                                    >
+                                        <DoorFrameReformSection
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                        />
+                                    </QuestionBlock>
                                 </Stack>
                             )}
+
                             {activeStep === 3 && (
                                 <Stack spacing={2}>
-                                    <Typography fontWeight={900}>바닥 철거 공사 *</Typography>
-                                    <CheckboxGroupWithUnknown
-                                        name="floor_demolition"
-                                        options={FLOOR_DEMOLITION_OPTIONS as any}
-                                        control={control}
-                                        errors={errors}
-                                        setValue={setValue}
-                                        fieldRefs={fieldRefs}
-                                    />
-                                    <EtcTextField
-                                        whenCheckedIn="floor_demolition"
-                                        etcName="floor_demolition_etc"
-                                        control={control}
-                                        errors={errors}
-                                        setValue={setValue}
-                                        fieldRefs={fieldRefs}
-                                        placeholder="예) 거실 마루만 철거, 방 장판만 철거 등"
-                                    />
-                                    <Typography fontWeight={900}>바닥 공사 *</Typography>
-                                    <CheckboxGroupWithUnknown
-                                        name="floor_work"
-                                        options={FLOOR_WORK_OPTIONS as any}
-                                        control={control}
-                                        errors={errors}
-                                        setValue={setValue}
-                                        fieldRefs={fieldRefs}
-                                    />
-                                    <EtcTextField
-                                        whenCheckedIn="floor_work"
-                                        etcName="floor_work_etc"
-                                        control={control}
-                                        errors={errors}
-                                        setValue={setValue}
-                                        fieldRefs={fieldRefs}
-                                        placeholder="예) 특정 공간만 바닥 변경 등"
-                                    />
-                                    <Typography fontWeight={900}>몰딩 공사 *</Typography>
-                                    <CheckboxGroupWithUnknown
-                                        name="molding_work"
-                                        options={MOLDING_WORK_OPTIONS as any}
-                                        control={control}
-                                        errors={errors}
-                                        setValue={setValue}
-                                        fieldRefs={fieldRefs}
-                                    />
-                                    <EtcTextField whenCheckedIn="molding_work" etcName="molding_work_etc" control={control} errors={errors} setValue={setValue} fieldRefs={fieldRefs} />
+                                    <QuestionBlock title="바닥 철거 공사 *">
+                                        <CheckboxGroupWithUnknown
+                                            name="floor_demolition"
+                                            options={FLOOR_DEMOLITION_OPTIONS as any}
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                        />
+                                        <EtcTextField
+                                            whenCheckedIn="floor_demolition"
+                                            etcName="floor_demolition_etc"
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                            placeholder="예) 거실 마루만 철거, 방 장판만 철거 등"
+                                        />
+                                    </QuestionBlock>
 
-                                    <Typography fontWeight={900}>중문 공사 *</Typography>
-                                    <CheckboxGroupWithUnknown
-                                        name="partition_door"
-                                        options={PARTITION_DOOR_OPTIONS as any}
-                                        control={control}
-                                        errors={errors}
-                                        setValue={setValue}
-                                        fieldRefs={fieldRefs}
-                                    />
-                                    <EtcTextField whenCheckedIn="partition_door" etcName="partition_door_etc" control={control} errors={errors} setValue={setValue} fieldRefs={fieldRefs} />
+                                    <QuestionBlock title="바닥 공사 *">
+                                        <CheckboxGroupWithUnknown
+                                            name="floor_work"
+                                            options={FLOOR_WORK_OPTIONS as any}
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                        />
+                                        <EtcTextField
+                                            whenCheckedIn="floor_work"
+                                            etcName="floor_work_etc"
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                            placeholder="예) 특정 공간만 바닥 변경 등"
+                                        />
+                                    </QuestionBlock>
 
-                                    <Typography fontWeight={900}>필름 공사 *</Typography>
-                                    <CheckboxGroupWithUnknown
-                                        name="film_work"
-                                        options={FILM_WORK_OPTIONS as any}
-                                        control={control}
-                                        errors={errors}
-                                        setValue={setValue}
-                                        fieldRefs={fieldRefs}
-                                    />
-                                    <EtcTextField whenCheckedIn="film_work" etcName="film_work_etc" control={control} errors={errors} setValue={setValue} fieldRefs={fieldRefs} />
+                                    <QuestionBlock title="몰딩 공사 *">
+                                        <CheckboxGroupWithUnknown
+                                            name="molding_work"
+                                            options={MOLDING_WORK_OPTIONS as any}
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                        />
+                                        <EtcTextField
+                                            whenCheckedIn="molding_work"
+                                            etcName="molding_work_etc"
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                        />
+                                    </QuestionBlock>
+
+                                    <QuestionBlock title="중문 공사 *">
+                                        <CheckboxGroupWithUnknown
+                                            name="partition_door"
+                                            options={PARTITION_DOOR_OPTIONS as any}
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                        />
+                                        <EtcTextField
+                                            whenCheckedIn="partition_door"
+                                            etcName="partition_door_etc"
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                        />
+                                    </QuestionBlock>
+
+                                    <QuestionBlock title="필름 공사 *" divider={false}>
+                                        <CheckboxGroupWithUnknown
+                                            name="film_work"
+                                            options={FILM_WORK_OPTIONS as any}
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                        />
+                                        <EtcTextField
+                                            whenCheckedIn="film_work"
+                                            etcName="film_work_etc"
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                        />
+                                    </QuestionBlock>
                                 </Stack>
                             )}
 
                             {activeStep === 4 && (
                                 <Stack spacing={2}>
-                                    <Typography fontWeight={900}>욕실 공사 *</Typography>
-                                    <CheckboxGroupWithUnknown
-                                        name="bathroom_work"
-                                        options={BATHROOM_WORK_OPTIONS as any}
-                                        control={control}
-                                        errors={errors}
-                                        setValue={setValue}
-                                        fieldRefs={fieldRefs}
-                                    />
-                                    <EtcTextField whenCheckedIn="bathroom_work" etcName="bathroom_work_etc" control={control} errors={errors} setValue={setValue} fieldRefs={fieldRefs} />
+                                    <QuestionBlock title="욕실 공사 *">
+                                        <CheckboxGroupWithUnknown
+                                            name="bathroom_work"
+                                            options={BATHROOM_WORK_OPTIONS as any}
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                        />
+                                        <EtcTextField
+                                            whenCheckedIn="bathroom_work"
+                                            etcName="bathroom_work_etc"
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                        />
+                                    </QuestionBlock>
 
-                                    <Typography fontWeight={900}>타일 공사 *</Typography>
-                                    <CheckboxGroupWithUnknown
-                                        name="tile_work"
-                                        options={TILE_WORK_OPTIONS as any}
-                                        control={control}
-                                        errors={errors}
-                                        setValue={setValue}
-                                        fieldRefs={fieldRefs}
-                                    />
-                                    <EtcTextField whenCheckedIn="tile_work" etcName="tile_work_etc" control={control} errors={errors} setValue={setValue} fieldRefs={fieldRefs} />
-                                    <Typography fontWeight={900}>벽체 마감 공사 *</Typography>
-                                    <CheckboxGroupWithUnknown name="wall_finish" options={WALL_FINISH_OPTIONS as any} control={control} errors={errors} setValue={setValue} fieldRefs={fieldRefs} />
-                                    <EtcTextField whenCheckedIn="wall_finish" etcName="wall_finish_etc" control={control} errors={errors} setValue={setValue} fieldRefs={fieldRefs} />
+                                    <QuestionBlock title="타일 공사 *">
+                                        <CheckboxGroupWithUnknown
+                                            name="tile_work"
+                                            options={TILE_WORK_OPTIONS as any}
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                        />
+                                        <EtcTextField
+                                            whenCheckedIn="tile_work"
+                                            etcName="tile_work_etc"
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                        />
+                                    </QuestionBlock>
 
+                                    <QuestionBlock title="벽체 마감 공사 *" divider={false}>
+                                        <CheckboxGroupWithUnknown
+                                            name="wall_finish"
+                                            options={WALL_FINISH_OPTIONS as any}
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                        />
+                                        <EtcTextField
+                                            whenCheckedIn="wall_finish"
+                                            etcName="wall_finish_etc"
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                        />
+                                    </QuestionBlock>
                                 </Stack>
                             )}
 
                             {activeStep === 5 && (
                                 <Stack spacing={2}>
+                                    <QuestionBlock
+                                        title="전기 공사 *"
+                                        desc="*가견적상, 기본적으로 주로 사용하는 제품으로 배치 및 갯수 설정 됩니다. 정확한 수치는 추후 조정 될 예정입니다.*"
+                                    >
+                                        <CheckboxGroupWithUnknown
+                                            name="electrical_work"
+                                            options={ELECTRICAL_OPTIONS as any}
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                        />
+                                        <EtcTextField
+                                            whenCheckedIn="electrical_work"
+                                            etcName="electrical_work_etc"
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                        />
+                                    </QuestionBlock>
 
-                                    <Typography fontWeight={900}>전기 공사 *</Typography>
-                                    <Typography fontWeight={300}>*가견적상, 기본적으로 주로 사용하는 제품으로 배치 및 갯수 설정 됩니다. 정확한 수치는 추후 조정 될 예정입니다.*</Typography>
-                                    <CheckboxGroupWithUnknown name="electrical_work" options={ELECTRICAL_OPTIONS as any} control={control} errors={errors} setValue={setValue} fieldRefs={fieldRefs} />
-                                    <EtcTextField whenCheckedIn="electrical_work" etcName="electrical_work_etc" control={control} errors={errors} setValue={setValue} fieldRefs={fieldRefs} />
+                                    <QuestionBlock title="베란다 벽면 탄성코트 공사 *">
+                                        <CheckboxGroupWithUnknown
+                                            name="veranda_coat"
+                                            options={VERANDA_COAT_OPTIONS as any}
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                        />
+                                        <EtcTextField
+                                            whenCheckedIn="veranda_coat"
+                                            etcName="veranda_coat_etc"
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                        />
+                                    </QuestionBlock>
 
-                                    <Divider />
-
-                                    <Typography fontWeight={900}>베란다 벽면 탄성코트 공사 *</Typography>
-                                    <CheckboxGroupWithUnknown name="veranda_coat" options={VERANDA_COAT_OPTIONS as any} control={control} errors={errors} setValue={setValue} fieldRefs={fieldRefs} />
-                                    <EtcTextField whenCheckedIn="veranda_coat" etcName="veranda_coat_etc" control={control} errors={errors} setValue={setValue} fieldRefs={fieldRefs} />
-
-                                    <Divider />
-
-                                    <Typography fontWeight={900}>에어컨 공사(천장형) *</Typography>
-                                    <Typography fontWeight={300}>현장 상황에 따라 천장 단내림 공사가 수반 됩니다.</Typography>
-                                    <CheckboxGroupWithUnknown name="aircon_work" options={AIRCON_OPTIONS as any} control={control} errors={errors} setValue={setValue} fieldRefs={fieldRefs} />
-                                    <EtcTextField whenCheckedIn="aircon_work" etcName="aircon_work_etc" control={control} errors={errors} setValue={setValue} fieldRefs={fieldRefs} />
+                                    <QuestionBlock
+                                        title="에어컨 공사(천장형) *"
+                                        desc="현장 상황에 따라 천장 단내림 공사가 수반 됩니다."
+                                        divider={false}
+                                    >
+                                        <CheckboxGroupWithUnknown
+                                            name="aircon_work"
+                                            options={AIRCON_OPTIONS as any}
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                        />
+                                        <EtcTextField
+                                            whenCheckedIn="aircon_work"
+                                            etcName="aircon_work_etc"
+                                            control={control}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
+                                        />
+                                    </QuestionBlock>
                                 </Stack>
                             )}
 
                             {activeStep === 6 && (
                                 <Stack spacing={2}>
-                                    <Typography fontWeight={900}>가구 공사 *</Typography>
-
-                                    <Box
-                                        ref={(el: HTMLDivElement | null) => {
-                                            fieldRefs.current["furniture_none"] = el;
-                                        }}
-                                    >
-                                        <Controller
-                                            name="furniture_none"
-                                            control={control}
-                                            render={({ field }) => (
-                                                <FormControlLabel
-                                                    control={
-                                                        <Checkbox
-                                                            checked={!!field.value}
-                                                            onChange={(e) => {
-                                                                const next = e.target.checked;
-                                                                if (next) {
-                                                                    setValue("furniture_replace", [], { shouldValidate: false });
-                                                                    setValue("furniture_reform", [], { shouldValidate: false });
-                                                                    setValue("furniture_replace_etc", "", { shouldValidate: false });
-                                                                    setValue("furniture_reform_etc", "", { shouldValidate: false });
-                                                                    setValue("furniture_none", true, { shouldValidate: true });
-                                                                } else {
-                                                                    setValue("furniture_none", false, { shouldValidate: true });
-                                                                }
-                                                            }}
-                                                        />
-                                                    }
-                                                    label="가구 공사 없음"
-                                                />
-                                            )}
-                                        />
-                                        {errors?.furniture_none ? <Alert severity="error">{errors.furniture_none?.message}</Alert> : null}
-                                    </Box>
-
-                                    <FurnitureMatrix
-                                        control={control}
-                                        errors={errors}
-                                        setValue={setValue}
-                                        fieldRefs={fieldRefs}
-                                    />
-                                    <Typography fontWeight={900}>평면도 첨부 </Typography>
-                                    <Typography variant="body2" color="text.secondary">
-                                        평면도가 아닌 파일은 온라인 견적에 반영이 어려울 수 있어요. (PDF/이미지 권장)
-                                    </Typography>
-
-                                    <Box
-                                        ref={(el: HTMLDivElement | null) => {
-                                            fieldRefs.current["plans"] = el;
-                                        }}
-                                    >
-                                        {errors?.plans ? <Alert severity="error">{errors.plans?.message as any}</Alert> : null}
-
-                                        <Button variant="outlined" component="label" sx={{ mt: 1 }}>
-                                            파일 추가
-                                            <input
-                                                hidden
-                                                type="file"
-                                                multiple
-                                                accept="image/*,application/pdf"
-                                                onChange={(e) => addPlans(e.target.files)}
+                                    <QuestionBlock title="가구 공사 *" divider={false}>
+                                        <Box
+                                            ref={(el: HTMLDivElement | null) => {
+                                                fieldRefs.current["furniture_none"] = el;
+                                            }}
+                                        >
+                                            <Controller
+                                                name="furniture_none"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <FormControlLabel
+                                                        control={
+                                                            <Checkbox
+                                                                checked={!!field.value}
+                                                                onChange={(e) => {
+                                                                    const next = e.target.checked;
+                                                                    if (next) {
+                                                                        setValue("furniture_replace", [], { shouldValidate: false });
+                                                                        setValue("furniture_reform", [], { shouldValidate: false });
+                                                                        setValue("furniture_replace_etc", "", { shouldValidate: false });
+                                                                        setValue("furniture_reform_etc", "", { shouldValidate: false });
+                                                                        setValue("furniture_none", true, { shouldValidate: true });
+                                                                    } else {
+                                                                        setValue("furniture_none", false, { shouldValidate: true });
+                                                                    }
+                                                                }}
+                                                            />
+                                                        }
+                                                        label="가구 공사 없음"
+                                                    />
+                                                )}
                                             />
-                                        </Button>
+                                            {errors?.furniture_none ? (
+                                                <Alert severity="error">{errors.furniture_none?.message}</Alert>
+                                            ) : null}
+                                        </Box>
 
-                                        {plans?.length ? (
-                                            <Stack spacing={1} sx={{ mt: 1 }}>
-                                                {plans.map((f: any, idx: number) => (
-                                                    <Stack
-                                                        key={idx}
-                                                        direction="row"
-                                                        spacing={1}
-                                                        justifyContent="space-between"
-                                                        alignItems="center"
-                                                    >
-                                                        <Typography variant="body2" sx={{ wordBreak: "break-all" }}>
-                                                            {idx + 1}. {f.name}
-                                                        </Typography>
-                                                        <Button size="small" color="error" onClick={() => removePlan(idx)}>
-                                                            제거
-                                                        </Button>
-                                                    </Stack>
-                                                ))}
-                                            </Stack>
-                                        ) : (
-                                            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                                                선택한 파일이 없습니다. (최대 3개)
-                                            </Typography>
-                                        )}
-                                    </Box>
-                                    <Box
-                                        ref={(el: HTMLDivElement | null) => {
-                                            fieldRefs.current["inquiry_note"] = el;
-                                        }}
-                                    >
-                                        <Controller
-                                            name="inquiry_note"
+                                        <FurnitureMatrix
                                             control={control}
-                                            render={({ field }) => (
-                                                <TextField
-                                                    label="기타 문의 사항"
-                                                    {...field}
-                                                    fullWidth
-                                                    multiline
-                                                    minRows={3}
-                                                    placeholder="원하시는 스타일, 요청사항, 참고할 점 등을 적어주세요."
-                                                />
-                                            )}
+                                            errors={errors}
+                                            setValue={setValue}
+                                            fieldRefs={fieldRefs}
                                         />
-                                    </Box>
-                                    <Box
-                                        ref={(el: HTMLDivElement | null) => {
-                                            fieldRefs.current["consult_confirm"] = el;
-                                        }}
-                                    >
-                                        <Typography fontWeight={900} sx={{ mt: 2 }}>
-                                            * 위 내용 바탕으로 간단한 상담은 전화로 진행됩니다. *
+
+                                        <Divider sx={{ my: 1 }} />
+
+                                        <Typography fontWeight={900}>평면도 첨부</Typography>
+                                        <Typography variant="body2" color="text.secondary">
+                                            평면도가 아닌 파일은 온라인 견적에 반영이 어려울 수 있어요. (PDF/이미지 권장)
                                         </Typography>
 
-                                        <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: "pre-line", mt: 1 }}>
-                                            {`※ 유선 상담의 경우, 20~30분 소요 됩니다. 단순한 사항과 필수로 측정 되기에 정확하지 않을 수 있습니다.
+                                        <Box
+                                            ref={(el: HTMLDivElement | null) => {
+                                                fieldRefs.current["plans"] = el;
+                                            }}
+                                        >
+                                            {errors?.plans ? (
+                                                <Alert severity="error">{errors.plans?.message as any}</Alert>
+                                            ) : null}
+
+                                            <Button variant="outlined" component="label" sx={{ mt: 1 }}>
+                                                파일 추가
+                                                <input
+                                                    hidden
+                                                    type="file"
+                                                    multiple
+                                                    accept="image/*,application/pdf"
+                                                    onChange={(e) => addPlans(e.target.files)}
+                                                />
+                                            </Button>
+
+                                            {plans?.length ? (
+                                                <Stack spacing={1} sx={{ mt: 1 }}>
+                                                    {plans.map((f: any, idx: number) => (
+                                                        <Stack
+                                                            key={idx}
+                                                            direction="row"
+                                                            spacing={1}
+                                                            justifyContent="space-between"
+                                                            alignItems="center"
+                                                        >
+                                                            <Typography variant="body2" sx={{ wordBreak: "break-all" }}>
+                                                                {idx + 1}. {f.name}
+                                                            </Typography>
+                                                            <Button size="small" color="error" onClick={() => removePlan(idx)}>
+                                                                제거
+                                                            </Button>
+                                                        </Stack>
+                                                    ))}
+                                                </Stack>
+                                            ) : (
+                                                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                                                    선택한 파일이 없습니다. (최대 3개)
+                                                </Typography>
+                                            )}
+                                        </Box>
+
+                                        <Divider sx={{ my: 1 }} />
+
+                                        <Box
+                                            ref={(el: HTMLDivElement | null) => {
+                                                fieldRefs.current["inquiry_note"] = el;
+                                            }}
+                                        >
+                                            <Controller
+                                                name="inquiry_note"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <TextField
+                                                        label="기타 문의 사항"
+                                                        {...field}
+                                                        fullWidth
+                                                        multiline
+                                                        minRows={3}
+                                                        placeholder="원하시는 스타일, 요청사항, 참고할 점 등을 적어주세요."
+                                                    />
+                                                )}
+                                            />
+                                        </Box>
+
+                                        <Divider sx={{ my: 1 }} />
+
+                                        <Box
+                                            ref={(el: HTMLDivElement | null) => {
+                                                fieldRefs.current["consult_confirm"] = el;
+                                            }}
+                                        >
+                                            <Typography fontWeight={900} sx={{ mt: 1 }}>
+                                                * 위 내용 바탕으로 간단한 상담은 전화로 진행됩니다. *
+                                            </Typography>
+
+                                            <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: "pre-line", mt: 1 }}>
+                                                {`※ 유선 상담의 경우, 20~30분 소요 됩니다. 단순한 사항과 필수로 측정 되기에 정확하지 않을 수 있습니다.
 상담 문의가 많아 일주일 이상 연락이 닿지 않는 경우에는 별도 메시지 또는 DM 보내주시면 감사 하겠습니다.
 
 ※ 내방 상담의 경우, 예약제로 진행되고 있습니다. 사전에 꼭 미리 연락 부탁드리겠습니다.
 1~2시간 상담이 이뤄진 후, 상세 견적서를 매우 디테일 하여,
 공사가 끝났을 때의 최종 견적서와 크게 다르지 않기에 구체적인 사양 & 예산을 잡기에 더욱 좋습니다.`}
-                                        </Typography>
+                                            </Typography>
 
-                                        <Controller
-                                            name="consult_confirm"
-                                            control={control}
-                                            render={({ field }) => (
-                                                <TextField
-                                                    select
-                                                    label="상담 진행 방식 확인 *"
-                                                    {...field}
-                                                    fullWidth
-                                                    sx={{ mt: 1 }}
-                                                    error={!!errors.consult_confirm}
-                                                    helperText={errors.consult_confirm?.message as any}
-                                                    required
-                                                >
-                                                    <MenuItem value="phone">예, 이해하였습니다. [유선 상담]으로 진행하겠습니다.</MenuItem>
-                                                    <MenuItem value="office">예, 이해하였습니다. [내방 미팅]으로 진행하겠습니다.</MenuItem>
-                                                </TextField>
-                                            )}
-                                        />
-                                    </Box>
-                                    <Typography variant="caption" color="text.secondary">
-                                        제출 시 입력하신 정보는 상담 목적으로만 사용됩니다.
-                                    </Typography>
+                                            <Controller
+                                                name="consult_confirm"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <TextField
+                                                        select
+                                                        label="상담 진행 방식 확인 *"
+                                                        {...field}
+                                                        fullWidth
+                                                        sx={{ mt: 1 }}
+                                                        error={!!errors.consult_confirm}
+                                                        helperText={errors.consult_confirm?.message as any}
+                                                        required
+                                                    >
+                                                        <MenuItem value="phone">
+                                                            예, 이해하였습니다. [유선 상담]으로 진행하겠습니다.
+                                                        </MenuItem>
+                                                        <MenuItem value="office">
+                                                            예, 이해하였습니다. [내방 미팅]으로 진행하겠습니다.
+                                                        </MenuItem>
+                                                    </TextField>
+                                                )}
+                                            />
+                                        </Box>
+
+                                        <Typography variant="caption" color="text.secondary">
+                                            제출 시 입력하신 정보는 상담 목적으로만 사용됩니다.
+                                        </Typography>
+                                    </QuestionBlock>
                                 </Stack>
                             )}
 
@@ -1406,10 +1651,7 @@ function WindowReformSection({
                     fieldRefs.current["window_reform"] = el;
                 }}
             >
-                <Typography fontWeight={900}>샷시 리폼 *</Typography>
-                <Typography variant="body2" color="text.secondary">
-                    샷시 부분 교체 시 선택사항입니다.
-                </Typography>
+
 
                 <CheckboxGroupWithUnknown
                     name="window_reform"
@@ -1471,10 +1713,7 @@ function DoorFrameReformSection({ control, errors, setValue, fieldRefs }: any) {
                     fieldRefs.current["door_frame_reform"] = el;
                 }}
             >
-                <Typography fontWeight={900}>방문/방문틀 리폼 *</Typography>
-                <Typography variant="body2" color="text.secondary">
-                    방문/방문틀 부분 교체 시 선택사항입니다.
-                </Typography>
+
 
                 <CheckboxGroupWithUnknown
                     name="door_frame_reform"
@@ -1677,5 +1916,32 @@ function FurnitureMatrix({
                 교체/리폼은 중복 선택 가능합니다.
             </Typography>
         </Box>
+    );
+}
+function QuestionBlock({
+                           title,
+                           desc,
+                           children,
+                           divider = true,
+                       }: {
+    title: string;
+    desc?: string;
+    children: React.ReactNode;
+    divider?: boolean;
+}) {
+    return (
+        <Stack spacing={1.25}>
+            <Typography fontWeight={900}>{title}</Typography>
+
+            {desc ? (
+                <Typography fontWeight={400} color="text.secondary">
+                    {desc}
+                </Typography>
+            ) : null}
+
+            {children}
+
+            {divider ? <Divider sx={{ my: 0.5 }} /> : null}
+        </Stack>
     );
 }
