@@ -28,6 +28,15 @@ declare global {
         daum?: any;
     }
 }
+type Notice = {
+    title: string;
+    subtitle?: string;
+    phone?: string;
+    regionText?: string;
+    closedMonths?: string[];
+    openInfo?: string[];
+    extra?: string[];
+};
 const TYPE_OPTIONS = [
     { value: "LOW", label: "Low (부분공사) / 당분간은 어렵습니다" },
     { value: "MIDDLE", label: "Middle (올철거)" },
@@ -255,6 +264,8 @@ const FormSchema = z.object({
     desired_type: z.string().min(1, "필수 질문입니다."),
     channel: z.string().min(1, "알게 된 경로를 선택해주세요."),
     budget_range: z.string().min(1, "예산 범위를 선택해주세요."),
+    start_date: z.string().min(1, "공사 시작일을 선택해주세요."),
+    move_in_date: z.string().min(1, "입주 예정일을 선택해주세요."),
 
     zip_code: z.string().min(1, "주소찾기로 주소를 선택해주세요."),
     address_road: z.string().default(""),
@@ -326,6 +337,15 @@ const FormSchema = z.object({
         .min(1, "상담 진행 방식 확인 항목을 선택해주세요."),
     hp: z.string().default(""), // honeypot
 }).superRefine((val, ctx) => {
+    if (val.start_date && val.move_in_date) {
+        if (new Date(val.move_in_date) < new Date(val.start_date)) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["move_in_date"],
+                message: "입주 예정일은 공사 시작일 이후여야 합니다.",
+            });
+        }
+    }
     const partialKeys = ["확장부만 교체", "내창만 교체", "외창만 교체"];
     const hasPartial = (val.window_work || []).some((v) => partialKeys.includes(v));
     const etcPairs:  Array<[string, string, string]> = [
@@ -427,7 +447,7 @@ const steps = [
 // ✅ 각 스텝에서 검증할 필드 목록(여기에 계속 추가하면 됨)
 
 const stepFields: Array<Array<keyof FormValues>> = [
-    ["name", "phone","channel", "budget_range", "zip_code", "address_detail"],
+    ["name", "phone","start_date", "move_in_date","channel", "budget_range", "zip_code", "address_detail"],
     ["desired_type","extension_existing",  "extension_plan"],
     ["window_work", "window_work_etc","window_reform", "window_reform_etc","door_frame_work",
         "door_frame_work_etc",
@@ -480,7 +500,14 @@ export default function PublicFormStepperPage() {
     const [submitDone, setSubmitDone] = useState(false);
     const [submitErr, setSubmitErr] = useState("");
     const [submitting, setSubmitting] = useState(false);
+    const [notice, setNotice] = useState<Notice | null>(null);
 
+    useEffect(() => {
+        fetch("/api/client/notice", { cache: "no-store" })
+            .then((r) => r.json())
+            .then((j) => setNotice(j.notice || null))
+            .catch(() => setNotice(null));
+    }, []);
     // 필드 DOM ref 맵(포커스/스크롤)
     const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -504,6 +531,8 @@ export default function PublicFormStepperPage() {
             address_road: "",
             address_jibun: "",
             address_detail: "",
+            start_date: "",
+            move_in_date: "",
             extension_existing: [],
             extension_plan: [],
             window_work: [],
@@ -650,7 +679,8 @@ export default function PublicFormStepperPage() {
                     channel: data.channel,
                     budget_range: data.budget_range,
                     budget_raw: budgetLabel,
-
+                    start_date: data.start_date,
+                    move_in_date: data.move_in_date,
 
                     zip_code: data.zip_code,
                     address_road: data.address_road,
@@ -660,6 +690,9 @@ export default function PublicFormStepperPage() {
 
                     // 예시 spec (여기에 공사항목 다 넣어 확장)
                     spec: {
+                        //
+                        start_date: data.start_date,
+                        move_in_date: data.move_in_date,
                         // 확장/구조
                         extension_existing: data.extension_existing,
                         extension_plan: data.extension_plan,
@@ -830,6 +863,7 @@ export default function PublicFormStepperPage() {
                             {/* ----- STEP CONTENTS ----- */}
                             {activeStep === 0 && (
                                 <Stack spacing={2}>
+                                    {notice ? <NoticeCard notice={notice} /> : null}
                                     <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                                         <Box
                                             ref={(el : HTMLDivElement | null) => {(fieldRefs.current["name"] = el)}}
@@ -878,7 +912,55 @@ export default function PublicFormStepperPage() {
                                     </Stack>
 
                                     <Divider />
+                                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                                        <Box
+                                            ref={(el: HTMLDivElement | null) => {
+                                                fieldRefs.current["start_date"] = el;
+                                            }}
+                                            sx={{ flex: 1, minWidth: 0 }}
+                                        >
+                                            <Controller
+                                                name="start_date"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <TextField
+                                                        label="공사 시작일(날짜)"
+                                                        type="date"
+                                                        {...field}
+                                                        InputLabelProps={{ shrink: true }}
+                                                        fullWidth
+                                                        required
+                                                        error={!!errors.start_date}
+                                                        helperText={errors.start_date?.message as any}
+                                                    />
+                                                )}
+                                            />
+                                        </Box>
 
+                                        <Box
+                                            ref={(el: HTMLDivElement | null) => {
+                                                fieldRefs.current["move_in_date"] = el;
+                                            }}
+                                            sx={{ flex: 1, minWidth: 0 }}
+                                        >
+                                            <Controller
+                                                name="move_in_date"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <TextField
+                                                        label="입주 예정일(날짜)"
+                                                        type="date"
+                                                        {...field}
+                                                        InputLabelProps={{ shrink: true }}
+                                                        fullWidth
+                                                        required
+                                                        error={!!errors.move_in_date}
+                                                        helperText={errors.move_in_date?.message as any}
+                                                    />
+                                                )}
+                                            />
+                                        </Box>
+                                    </Stack>
                                     {/* --- 주소: 모바일 최적화 --- */}
                                     <Stack spacing={1.5}>
                                         {/* 우편번호 + 주소찾기 (모바일도 한 줄 고정) */}
@@ -1943,5 +2025,59 @@ function QuestionBlock({
 
             {divider ? <Divider sx={{ my: 0.5 }} /> : null}
         </Stack>
+    );
+}
+
+function NoticeCard({ notice }: { notice: Notice }) {
+    return (
+        <Card variant="outlined" sx={{ borderRadius: 3 }}>
+            <CardContent>
+                <Typography fontWeight={900} sx={{ fontSize: 18 }}>
+                    {notice.title}
+                </Typography>
+                {notice.subtitle ? (
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                        {notice.subtitle}
+                    </Typography>
+                ) : null}
+
+                <Divider sx={{ my: 1 }} />
+
+                {notice.closedMonths?.length ? (
+                    <Stack spacing={0.25} sx={{ mb: 1 }}>
+                        <Typography fontWeight={900} variant="body2">※ 공지사항</Typography>
+                        {notice.closedMonths.map((m) => (
+                            <Typography key={m} variant="body2">[{m}] 마감</Typography>
+                        ))}
+                    </Stack>
+                ) : null}
+
+                {notice.openInfo?.length ? (
+                    <Stack spacing={0.25} sx={{ mb: 1 }}>
+                        {notice.openInfo.map((t) => (
+                            <Typography key={t} variant="body2">{t}</Typography>
+                        ))}
+                    </Stack>
+                ) : null}
+
+                {notice.phone ? <Typography variant="body2">{notice.phone}</Typography> : null}
+
+                {notice.regionText ? (
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                        {notice.regionText}
+                    </Typography>
+                ) : null}
+
+                {notice.extra?.length ? (
+                    <Stack spacing={0.25} sx={{ mt: 1 }}>
+                        {notice.extra.map((t) => (
+                            <Typography key={t} variant="body2" color="text.secondary">
+                                • {t}
+                            </Typography>
+                        ))}
+                    </Stack>
+                ) : null}
+            </CardContent>
+        </Card>
     );
 }

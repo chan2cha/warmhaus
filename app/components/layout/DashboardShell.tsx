@@ -49,7 +49,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
     const navItems: NavItem[] = useMemo(
         () => [
             { label: "Inbox", href: "/", icon: <InboxIcon /> },
-            { label: "Settings", href: "/settings", icon: <SettingsIcon /> },
+            { label: "Settings", href: "/admin/notice", icon: <SettingsIcon /> },
         ],
         []
     );
