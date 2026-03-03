@@ -765,14 +765,18 @@ export default function PublicFormStepperPage() {
 
                     <Card variant="outlined" sx={{ borderRadius: 3 }}>
                         <CardContent>
-                            <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 2 }}>
+                            <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 2,"& .MuiStepLabel-label": {
+                                    display: { xs: "none", sm: "block" }, // ✅ 모바일 라벨 숨김
+                                }, }}>
                                 {steps.map((label) => (
                                     <Step key={label}>
                                         <StepLabel>{label}</StepLabel>
                                     </Step>
                                 ))}
                             </Stepper>
-
+                            <Typography fontWeight={900} sx={{ display: { xs: "block", sm: "none" }, mb: 1 }}>
+                                {steps[activeStep]}
+                            </Typography>
                             {submitErr ? <Alert severity="error">{submitErr}</Alert> : null}
 
                             {/* ----- STEP CONTENTS ----- */}
