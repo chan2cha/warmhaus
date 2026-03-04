@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-
+import {Rules} from "@/app/type/type";
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 function isAdminEmail(email?: string | null) {
     const raw = process.env.ADMIN_EMAILS || "";
     const allow = raw.split(",").map((s) => s.trim()).filter(Boolean);
@@ -18,14 +22,31 @@ export async function PATCH(req: Request) {
         return NextResponse.json({ error: "rules is required" }, { status: 400 });
     }
 
-    const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    const rules = (body.rules || {}) as Rules;
+    // ✅ 예산 간단 검증 (원하면 제거 가능)
+    const minB = Number(rules.minBudgetManwon ?? 0);
+    const prefB = Number(rules.preferredBudgetManwon ?? 0);
+    if (Number.isFinite(minB) && Number.isFinite(prefB) && minB > prefB) {
+        return NextResponse.json({ error: "최소 예산은 선호 예산보다 클 수 없습니다." }, { status: 400 });
+    }
+
+    // ✅ partialOpen 구조 정규화 (fromDay 숫자 강제)
+    const partialOpen = Object.fromEntries(
+        Object.entries(rules.partialOpen ?? {}).map(([m, v]) => [
+            m,
+            { fromDay: Number((v as any)?.fromDay ?? 0) },
+        ])
     );
+    const nextRules: Rules = {
+        ...body.rules,
+        partialOpen, // ✅ 절대 누락 금지
+        minBudgetManwon: minB,
+        preferredBudgetManwon: prefB,
+    };
 
     const { error } = await supabase
         .from("settings")
-        .upsert({ key: "lead_rules", value: body.rules }, { onConflict: "key" });
+        .upsert({ key: "lead_rules", value: nextRules }, { onConflict: "key" });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
