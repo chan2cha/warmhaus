@@ -83,6 +83,7 @@ export function RHFTextField<T extends FieldValues>({
                         {...textFieldProps}
                         fullWidth
                         error={!!errMsg}
+                        helperText={errMsg}
                         onChange={(e) => {
                             const v = e.target.value;
                             field.onChange(transform ? transform(v) : v);
@@ -135,7 +136,7 @@ export function RHFSelectField<T extends FieldValues>({
                         fullWidth
                         label={undefined}
                         error={!!errMsg}
-
+                        helperText={errMsg }
                     >
                         {options.map((o) => (
                             <MenuItem key={o.value} value={o.value}>
