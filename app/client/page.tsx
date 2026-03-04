@@ -127,29 +127,24 @@ export default function ClientCoverPage() {
             {/* 컨텐츠 */}
             <Box
                 sx={{
-                    position: "relative",
+                    position: "absolute",
+                    left: 0,
+                    right: 0,
+                    bottom: { xs: 28, sm: 40 }, // ✅ 바닥에서 띄우기(원하는 만큼 조절)
                     zIndex: 1,
-                    maxWidth: 520,
-                    mx: "auto",
                     px: 2,
-
-                    // ✅ 위 여백 줄이고
-                    pt: { xs: 3, sm: 7 },
-
-                    // ✅ 아래 여백 크게(모바일에서 더 내려감)
-                    pb: { xs: 1, sm: 4 },
-
-                    minHeight: "100dvh",
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "flex-end",
                 }}
             >
+                <Box sx={{ maxWidth: 520, mx: "auto" }}>
                 <Card
                     elevation={0}
                     sx={{
-                        bgcolor: "transparent",
-                        boxShadow: "none",
+                        borderRadius: 4,
+                        bgcolor: "rgba(255,255,255,0.45)",
+                        border: "1px solid rgba(0,0,0,0.04)",
+                        backdropFilter: "blur(5px)",
+                        boxShadow: "0 8px 20px rgba(0,0,0,0.08)",
+                        p: 2,
                     }}
                 >
                     <CardContent sx={{ p: 0 }}>
@@ -254,6 +249,7 @@ export default function ClientCoverPage() {
                         </Stack>
                     </CardContent>
                 </Card>
+                </Box>
             </Box>
         </Box>
     );
