@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import {Rules} from "@/app/type/type";
 
 type PublicNotice = {
     title?: string;
@@ -10,14 +11,10 @@ type PublicNotice = {
     extra?: string[];
 };
 
-type LeadRules = {
-    closedMonths?: string[]; // ["2026-03"]
-    partialOpen?: Record<string, { fromDay: number }>; // {"2026-04":{fromDay:22}}
-};
 
-function formatMonthNotice(rules?: LeadRules) {
+function formatMonthNotice(rules?: Rules) {
     const closed = rules?.closedMonths || [];
-    const partial = rules?.partialOpen || {};
+    const partial = rules?.partialOpen || [];
 
     const lines: string[] = [];
 
@@ -26,9 +23,9 @@ function formatMonthNotice(rules?: LeadRules) {
         lines.push(`[${m}] 마감`);
     }
 
-    // 부분 허용 월
-    for (const [m, v] of Object.entries(partial).sort(([a], [b]) => a.localeCompare(b))) {
-        if (v?.fromDay) lines.push(`[${m}] ${v.fromDay}일부터 가능`);
+    // 완전 마감 월
+    for (const m of [...partial].sort()) {
+        lines.push(`[${m}] 일부터 가능`);
     }
 
     return lines;
@@ -69,7 +66,7 @@ export async function GET() {
     ]);
 
     const notice: PublicNotice = (noticeRow?.value as any) || {};
-    const rules: LeadRules = (rulesRow?.value as any) || {};
+    const rules: Rules = (rulesRow?.value as any) || {};
 
     // ✅ 룰에서 “공지용 마감/가능 라인” 생성
     const scheduleLines = formatMonthNotice(rules);

@@ -30,16 +30,9 @@ export async function PATCH(req: Request) {
         return NextResponse.json({ error: "최소 예산은 선호 예산보다 클 수 없습니다." }, { status: 400 });
     }
 
-    // ✅ partialOpen 구조 정규화 (fromDay 숫자 강제)
-    const partialOpen = Object.fromEntries(
-        Object.entries(rules.partialOpen ?? {}).map(([m, v]) => [
-            m,
-            { fromDay: Number((v as any)?.fromDay ?? 0) },
-        ])
-    );
+
     const nextRules: Rules = {
         ...body.rules,
-        partialOpen, // ✅ 절대 누락 금지
         minBudgetManwon: minB,
         preferredBudgetManwon: prefB,
     };

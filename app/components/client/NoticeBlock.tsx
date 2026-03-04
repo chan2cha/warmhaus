@@ -4,13 +4,15 @@ import {
     Button,
     Card,
     CardContent,
-    Chip,
+    Chip, Collapse,
     Divider,
     IconButton, Skeleton,
     Stack,
     Typography,
 } from "@mui/material";
-import CallIcon from "@mui/icons-material/Call";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import PhoneInTalkIcon from "@mui/icons-material/PhoneInTalk";
 type Notice = {
     title: string;
     subtitle?: string;
@@ -22,125 +24,125 @@ type Notice = {
 function NoticeSkeleton() { return ( <Card variant="outlined" sx={{ borderRadius: 3 }}> <CardContent> <Stack spacing={1}> <Skeleton variant="text" width="55%" height={28} /> <Skeleton variant="text" width="35%" height={22} /> <Divider sx={{ my: 0.5 }} /> <Skeleton variant="rounded" height={72} /> </Stack> </CardContent> </Card> ); }
 function phoneToTel(phone?: string) {
     const p = String(phone || "").replace(/[^0-9]/g, "");
-    return p ? `tel:${p}` : "";
-}
-function formatPhone(phone?: string) {
-    const p = String(phone || "").replace(/[^0-9]/g, "");
-    return p.replace(/^(\d{2,3})(\d{3,4})(\d{4})$/, "$1-$2-$3");
-}
-function pickDeadline(openInfo?: string[]) {
-    const xs = openInfo || [];
-    const found = xs.find((t) => /\[\d{4}-\d{2}\].*마감/.test(t));
-    return found || xs[0] || "";
+    return p ? `${p}` : "";
 }
 
 function NoticeCard({ notice }: { notice: Notice }) {
     const tel = useMemo(() => phoneToTel(notice.phone), [notice.phone]);
-    const deadline = useMemo(() => pickDeadline(notice.openInfo), [notice.openInfo]);
-    const [expanded, setExpanded] = useState(false);
+    const [open, setOpen] = useState(false);
+    const deadlineChips = useMemo(() => {
+        const xs = (notice.openInfo ?? []).filter(Boolean);
+
+        // "마감" 먼저 오게만 정렬(원치 않으면 이 sort 블록 삭제)
+        return xs.sort((a, b) => {
+            const aIsClose = /\[\d{4}-\d{2}\].*마감/.test(a);
+            const bIsClose = /\[\d{4}-\d{2}\].*마감/.test(b);
+            if (aIsClose === bIsClose) return 0;
+            return aIsClose ? -1 : 1;
+        });
+    }, [notice.openInfo]);
+
 
     const extras = notice.extra || [];
-    const showToggle = extras.length >= 3;
+
 
     return (
         <Card variant="outlined" sx={{ borderRadius: 3 }}>
-            <CardContent sx={{ pb: 1.5 }}>
+            <CardContent sx={{ p: 2 }}>
                 {/* Header */}
-                <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
-                    <Box sx={{ minWidth: 0 }}>
-                        <Typography fontWeight={900} sx={{ fontSize: 18, lineHeight: 1.2 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+
+                        <Typography variant="subtitle1" fontWeight={800} >
                             {notice.title}
                         </Typography>
-                        {notice.subtitle ? (
-                            <Typography variant="caption" color="text.secondary">
-                                {notice.subtitle}
-                            </Typography>
-                        ) : null}
-                    </Box>
 
-                    {tel ? (
-                        <IconButton size="small" component="a" href={tel} aria-label="전화하기">
-                            <CallIcon fontSize="small" />
-                        </IconButton>
-                    ) : null}
+
+                    {tel && (<Button
+                        size="small"
+                        variant="contained"
+                        startIcon={<PhoneInTalkIcon />}
+                        href={`${notice.phone}`}
+                        sx={{
+                            borderRadius: 999,
+                            px: 1.5,
+                            minWidth: 0,
+                            whiteSpace: "nowrap",
+                        }}
+                    >
+                        {tel}
+                    </Button>
+                        )}
                 </Stack>
 
-                {/* ✅ 요약(한눈에) */}
-                <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 1 }}>
-                    {deadline ? (
+                <Box
+                    sx={{
+                        mt: 1,
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 1.5,
+                        flexWrap:"wrap"
+                    }}
+                >
+
+                    {/* 좌측: 마감/부분허용월 세로로 쌓기 */}
+                    <Stack spacing={1} sx={{ flex: "1 1 220px", minWidth: 0 }}>
+                        {deadlineChips.map((t, idx) => (
+                            <Chip
+                                key={`${t}-${idx}`}
+                                label={t}
+                                size="small"
+                                color={/마감/.test(t) ? "warning" : "info"}
+                                sx={{
+                                    height:"auto",
+                                    width: "fit-content",
+                                    maxWidth: "100%",
+                                    "& .MuiChip-label": { display:"block",whiteSpace: "normal",overflow: "visible", textOverflow: "clip",overflowWrap:"anywhere", lineHeight: 1.2,
+                                        py: 0.25, },
+                                }}
+                            />
+                        ))}
+                    </Stack>
+
+                    {/* 우측: 시공가능지역 chip */}
+                    {notice.regionText && (
                         <Chip
+                            label={notice.regionText}
                             size="small"
-                            label={deadline}
-                            color="error"
-                            variant="filled"
-                            sx={{ fontWeight: 900 }}
+                            variant="outlined"
+                            sx={{
+                                height:"auto",
+                                width: "fit-content",
+                                maxWidth: "100%",
+                                "& .MuiChip-label": { display:"block",whiteSpace: "normal",overflow: "visible", textOverflow: "clip",overflowWrap:"anywhere" },
+                            }}
                         />
-                    ) : null}
+                    )}
 
-                    {notice.regionText ? (
-                        <Chip size="small" label={notice.regionText} variant="outlined" sx={{ fontWeight: 800 }} />
-                    ) : null}
-
-                    {notice.phone ? (
-                        <Chip size="small" label={formatPhone(notice.phone)} variant="outlined" sx={{ fontWeight: 800 }} />
-                    ) : null}
-                </Stack>
-
-                {/* ✅ openInfo가 마감 외에도 여러줄 내려오면 공지 섹션으로 */}
-                {notice.openInfo?.length && notice.openInfo.length > 1 ? (
-                    <>
-                        <Divider sx={{ my: 1.25 }} />
-                        <Typography fontWeight={900} variant="body2" sx={{ mb: 0.5 }}>
-                            공지
-                        </Typography>
-                        <Stack spacing={0.25}>
-                            {notice.openInfo.map((t) => (
-                                <Typography key={t} variant="body2">
-                                    • {t}
-                                </Typography>
-                            ))}
-                        </Stack>
-                    </>
-                ) : null}
-
+                </Box>
                 {/* ✅ 추가 안내: 기본 표시(펼침) BUT 카드 높이 폭주 방지 위해 3줄 클램프 + 더보기 */}
                 {extras.length ? (
                     <>
-                        <Divider sx={{ my: 1.25 }} />
-                        <Typography fontWeight={900} variant="body2" sx={{ mb: 0.5 }}>
-                            추가 안내
-                        </Typography>
+                        <Divider sx={{ my: 1.5 }} />
 
-                        <Stack
-                            spacing={0.25}
-                            sx={
-                                expanded
-                                    ? {}
-                                    : {
-                                        display: "-webkit-box",
-                                        WebkitLineClamp: 3,
-                                        WebkitBoxOrient: "vertical",
-                                        overflow: "hidden",
-                                    }
-                            }
-                        >
-                            {extras.map((t, i) => (
-                                <Typography key={i} variant="body2" color="text.secondary">
-                                    • {t}
-                                </Typography>
-                            ))}
-                        </Stack>
-
-                        {showToggle ? (
-                            <Button
+                        {/* 더보기: 가운데 정렬 아코디언 아이콘 */}
+                        <Box sx={{ display: "flex", justifyContent: "center" }}>
+                            <IconButton
                                 size="small"
-                                variant="text"
-                                onClick={() => setExpanded((v) => !v)}
-                                sx={{ px: 0, minWidth: 0, mt: 0.5 }}
+                                onClick={() => setOpen((v) => !v)}
+                                aria-label={open ? "접기" : "펼치기"}
                             >
-                                {expanded ? "접기" : "더보기"}
-                            </Button>
-                        ) : null}
+                                {open ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                            </IconButton>
+                        </Box>
+
+                        <Collapse in={open} timeout="auto" unmountOnExit>
+                            <Typography
+                                variant="body2"
+                                sx={{ mt: 1, whiteSpace: "pre-line", color: "text.secondary" }}
+                            >
+                                {extras}
+                            </Typography>
+                        </Collapse>
                     </>
                 ) : null}
             </CardContent>

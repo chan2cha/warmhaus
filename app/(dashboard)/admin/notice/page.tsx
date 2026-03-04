@@ -15,22 +15,17 @@ import {
     IconButton,
     Stack,
     TextField,
-    Typography,
+    Typography, Chip, Collapse,
 } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import PhoneInTalkIcon from "@mui/icons-material/PhoneInTalk";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import {Notice, Rules} from "@/app/type/type";
 
-type Notice = {
-    title: string;
-    subtitle?: string;
-    phone?: string;
-    extra?: string[];
-};
 
-type Rules = {
-    allowedRegions?: string[];
-    closedMonths?: string[];
-    partialOpen?: Record<string, { fromDay: number }>;
-};
+
+
 
 // helpers
 function linesToArray(s: string) {
@@ -68,16 +63,40 @@ function formatRegionPreview(allowedRegions?: string[]) {
 }
 
 function formatSchedulePreview(rules?: Rules) {
-    const closed = (rules?.closedMonths || []).slice().sort();
-    const partialEntries = Object.entries(rules?.partialOpen || {}).sort(([a], [b]) =>
-        a.localeCompare(b)
-    );
+    const closed = Array.from(new Set((rules?.closedMonths ?? []).map(String)))
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .sort();
+
+    const partialOpen = Array.from(new Set((rules?.partialOpen ?? []).map(String)))
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .sort();
 
     const lines: string[] = [];
-    for (const m of closed) lines.push(`[${m}] 마감`);
-    for (const [m, v] of partialEntries) {
-        if (v?.fromDay) lines.push(`[${m}] ${v.fromDay}일부터 가능`);
+
+    // closedMonths: YYYY-MM
+    for (const m of closed) {
+        // 안전하게 포맷 검증(원치 않으면 제거 가능)
+        if (/^\d{4}-\d{2}$/.test(m)) lines.push(`[${m}] 마감`);
     }
+
+    // partialOpen: YYYY-MM-DD -> [YYYY-MM] D일부터 가능
+    function toPartialOpenLine(dateStr: string) {
+        const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+        if (!match) return null;
+        const yyyy = match[1];
+        const mm = match[2];
+        const dd = Number(match[3]);
+        if (!Number.isFinite(dd) || dd < 1 || dd > 31) return null;
+        return `[${yyyy}-${mm}] ${dd}일부터 가능`;
+    }
+
+    for (const s of partialOpen) {
+        const line = toPartialOpenLine(s);
+        if (line) lines.push(line);
+    }
+
     return lines.length ? lines.join("\n") : "(설정된 마감/부분허용이 없습니다)";
 }
 
@@ -88,7 +107,6 @@ export default function AdminNoticePage() {
 
     // form fields
     const [title, setTitle] = useState("");
-    const [subtitle, setSubtitle] = useState("");
     const [phone, setPhone] = useState("");
     const [extraText, setExtraText] = useState("");
 
@@ -97,6 +115,7 @@ export default function AdminNoticePage() {
     const [rulesPreviewOpen, setRulesPreviewOpen] = useState(false);
     const [helpOpen, setHelpOpen] = useState(false);
 
+    const [open, setOpen] = useState(false)
     const adminEmail = useMemo(() => "chan2cha91@gmail.com", []);
 
     async function load() {
@@ -113,7 +132,7 @@ export default function AdminNoticePage() {
 
             const notice = noticeJson.notice || {};
             setTitle(notice.title || "");
-            setSubtitle(notice.subtitle || "");
+
             setPhone(notice.phone || "");
             setExtraText(arrayToLines(notice.extra));
 
@@ -132,11 +151,11 @@ export default function AdminNoticePage() {
     const previewNotice: Notice = useMemo(
         () => ({
             title: title.trim(),
-            subtitle: subtitle.trim() || undefined,
             phone: phone.trim() || undefined,
             extra: linesToArray(extraText),
+
         }),
-        [title, subtitle, phone, extraText]
+        [title,  phone, extraText]
     );
 
     async function save() {
@@ -208,13 +227,6 @@ export default function AdminNoticePage() {
                                 onChange={(e) => setTitle(e.target.value)}
                                 fullWidth
                                 required
-                            />
-
-                            <TextField
-                                label="부제목"
-                                value={subtitle}
-                                onChange={(e) => setSubtitle(e.target.value)}
-                                fullWidth
                             />
 
                             <TextField
@@ -296,45 +308,121 @@ export default function AdminNoticePage() {
             {/* ✅ 공지 미리보기 Dialog */}
             <Dialog open={previewOpen} onClose={() => setPreviewOpen(false)} maxWidth="sm" fullWidth>
                 <DialogTitle>공지사항 미리보기</DialogTitle>
-                <DialogContent dividers>
-                    <Stack spacing={1.5}>
-                        <Typography variant="h6" fontWeight={900}>
-                            {previewNotice.title || "(제목 없음)"}
-                        </Typography>
+                <Card variant="outlined" sx={{ borderRadius: 3 }}>
+                    <CardContent sx={{ p: 2 }}>
+                        {/* Header */}
+                        <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
 
-                        {previewNotice.subtitle ? (
-                            <Typography color="text.secondary">{previewNotice.subtitle}</Typography>
-                        ) : null}
+                            <Typography variant="subtitle1" fontWeight={800} >
+                                {previewNotice.title}
+                            </Typography>
 
-                        <Divider />
 
-                        <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                            {formatRegionPreview(rules?.allowedRegions)}
-                        </Typography>
+                            {previewNotice.phone && (<Button
+                                    size="small"
+                                    variant="contained"
+                                    startIcon={<PhoneInTalkIcon />}
+                                    href={`${previewNotice.phone}`}
+                                    sx={{
+                                        borderRadius: 999,
+                                        px: 1.5,
+                                        minWidth: 0,
+                                        whiteSpace: "nowrap",
+                                    }}
+                                >
+                                    {previewNotice.phone}
+                                </Button>
+                            )}
+                        </Stack>
 
-                        <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                            {formatSchedulePreview(rules || undefined)}
-                        </Typography>
+                        <Box
+                            sx={{
+                                mt: 1,
+                                display: "flex",
+                                alignItems: "flex-start",
+                                gap: 1.5,
+                                flexWrap:"wrap"
+                            }}
+                        >
 
-                        {previewNotice.phone ? (
-                            <Typography variant="body2">연락처: {previewNotice.phone}</Typography>
-                        ) : null}
+                            {/* 좌측: 마감/부분허용월 세로로 쌓기 */}
+                            <Stack spacing={1} sx={{ flex: "1 1 220px", minWidth: 0 }}>
+                                {rules?.closedMonths?.map((t, idx) => (
+                                    <Chip
+                                        key={`${t}-${idx}`}
+                                        label={t}
+                                        size="small"
+                                        color={"warning"}
+                                        sx={{
+                                            height:"auto",
+                                            width: "fit-content",
+                                            maxWidth: "100%",
+                                            "& .MuiChip-label": { display:"block",whiteSpace: "normal",overflow: "visible", textOverflow: "clip",overflowWrap:"anywhere", lineHeight: 1.2,
+                                                py: 0.25, },
+                                        }}
+                                    />
+                                ))}
+                                {rules?.partialOpen?.map((t, idx) => (
+                                    <Chip
+                                        key={`${t}-${idx} 일 부터 가능`}
+                                        label={t}
+                                        size="small"
+                                        color={ "info"}
+                                        sx={{
+                                            height:"auto",
+                                            width: "fit-content",
+                                            maxWidth: "100%",
+                                            "& .MuiChip-label": { display:"block",whiteSpace: "normal",overflow: "visible", textOverflow: "clip",overflowWrap:"anywhere", lineHeight: 1.2,
+                                                py: 0.25, },
+                                        }}
+                                    />
+                                ))}
+                            </Stack>
 
-                        {previewNotice.extra?.length ? (
+                            {/* 우측: 시공가능지역 chip */}
+                            {rules?.allowedRegions && (
+                                <Chip
+                                    label={rules?.allowedRegions}
+                                    size="small"
+                                    variant="outlined"
+                                    sx={{
+                                        height:"auto",
+                                        width: "fit-content",
+                                        maxWidth: "100%",
+                                        "& .MuiChip-label": { display:"block",whiteSpace: "normal",overflow: "visible", textOverflow: "clip",overflowWrap:"anywhere" },
+                                    }}
+                                />
+                            )}
+
+                        </Box>
+                        {/* ✅ 추가 안내: 기본 표시(펼침) BUT 카드 높이 폭주 방지 위해 3줄 클램프 + 더보기 */}
+                        {previewNotice.extra && (
                             <>
-                                <Divider />
-                                <Typography fontWeight={900}>추가 안내</Typography>
-                                <Stack spacing={0.5}>
-                                    {previewNotice.extra.map((line, idx) => (
-                                        <Typography key={idx} variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                                            • {line}
-                                        </Typography>
-                                    ))}
-                                </Stack>
+                                <Divider sx={{ my: 1.5 }} />
+
+                                {/* 더보기: 가운데 정렬 아코디언 아이콘 */}
+                                <Box sx={{ display: "flex", justifyContent: "center" }}>
+                                    <IconButton
+                                        size="small"
+                                        onClick={() => setOpen((v) => !v)}
+                                        aria-label={open ? "접기" : "펼치기"}
+                                    >
+                                        {open ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                                    </IconButton>
+                                </Box>
+
+                                <Collapse in={open} timeout="auto" unmountOnExit>
+                                    <Typography
+                                        variant="body2"
+                                        sx={{ mt: 1, whiteSpace: "pre-line", color: "text.secondary" }}
+                                    >
+                                        {previewNotice.extra}
+                                    </Typography>
+                                </Collapse>
                             </>
-                        ) : null}
-                    </Stack>
-                </DialogContent>
+                        )}
+                    </CardContent>
+                </Card>
                 <DialogActions>
                     <Button onClick={() => setPreviewOpen(false)}>닫기</Button>
                 </DialogActions>

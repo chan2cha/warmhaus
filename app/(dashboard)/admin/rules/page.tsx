@@ -58,7 +58,7 @@ function normalizeDateFlexible(raw: string) {
     if (nmm < 1 || nmm > 12) return null;
     if (ndd < 1 || ndd > 31) return null;
 
-    return { month: `${yyyy}-${mm}`, fromDay: ndd }; // partialOpen 구조 유지
+    return  `${yyyy}-${mm}-${dd}`;
 }
 
 export default function AdminRulesPage() {
@@ -75,7 +75,7 @@ export default function AdminRulesPage() {
     const [closedMonths, setClosedMonths] = useState<string[]>([]);
     const [closedMonthInput, setClosedMonthInput] = useState("");
 
-    const [partialOpen, setPartialOpen] = useState<Record<string, { fromDay: number }>>({});
+    const [partialOpen, setPartialOpen] = useState<string[]>([]);
     const [partialDateInput, setPartialDateInput] = useState(""); // YYYY-MM-DD
     function addAllowedRegion(raw: string) {
         const v = (raw || "").trim();
@@ -96,7 +96,7 @@ export default function AdminRulesPage() {
             const rules: Rules = json.rules || {
                 allowedRegions: [],
                 closedMonths: [],
-                partialOpen,
+                partialOpen:[],
                 budgetGradeMap: { A: [], B: [], C: [] },
 
             };
@@ -107,7 +107,7 @@ export default function AdminRulesPage() {
 
             setMinBudgetManwon(Number(rules?.minBudgetManwon ?? 0));
             setPreferredBudgetManwon(Number(rules?.preferredBudgetManwon ?? 0));
-            setPartialOpen(rules.partialOpen || {});
+            setPartialOpen(rules.partialOpen || []);
         } catch (e: any) {
             setMsg({ type: "error", text: e.message || "불러오기 실패" });
         } finally {
@@ -135,17 +135,13 @@ export default function AdminRulesPage() {
             return setMsg({ type: "error", text: "부분 허용 날짜는 YYYYMMDD 또는 YYYY-MM-DD 입니다. 예) 20260422" });
         }
 
-        const { month, fromDay } = parsed;
-        setPartialOpen((prev) => ({ ...prev, [month]: { fromDay } }));
+
+        setPartialOpen((prev) => sortMonths(Array.from(new Set([...prev, parsed]))));
         setPartialDateInput("");
     }
 
-    function removePartialOpen(month: string) {
-        setPartialOpen((prev) => {
-            const next = { ...prev };
-            delete next[month];
-            return next;
-        });
+    function removePartialOpen(v: string) {
+        setPartialOpen((prev) => prev.filter((x) => x !== v));
     }
     function removeClosedMonth(m: string) {
         setClosedMonths((prev) => prev.filter((x) => x !== m));
@@ -356,19 +352,17 @@ export default function AdminRulesPage() {
                             </Stack>
 
                             <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 1 }}>
-                                {Object.keys(partialOpen || {}).length ? (
-                                    Object.entries(partialOpen)
-                                        .sort(([a], [b]) => a.localeCompare(b))
-                                        .map(([m, v]) => (
-                                            <Chip
-                                                key={m}
-                                                label={`${m} · ${v.fromDay}일부터`}
-                                                onDelete={() => removePartialOpen(m)}
-                                                variant="outlined"
-                                                color={"primary"}
-                                                size="small"
-                                            />
-                                        ))
+                                {partialOpen.length ? (
+                                    sortMonths(partialOpen).map((v) => (
+                                        <Chip
+                                            key={v}
+                                            label={v}              // ✅ 이미 "YYYY-MM-DD" or "[YYYY-MM] 20일부터 가능" 같은 문자열이면 그대로
+                                            onDelete={() => removePartialOpen(v)}
+                                            variant="outlined"
+                                            color="primary"
+                                            size="small"
+                                        />
+                                    ))
                                 ) : (
                                     <Typography variant="body2" color="text.secondary">
                                         등록된 부분 허용 규칙이 없습니다.
