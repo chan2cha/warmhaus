@@ -22,6 +22,8 @@ import {
 import { useForm, Controller, useWatch ,SubmitHandler} from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { NoticeBlock } from "../components/client/NoticeBlock";
+import {RHFSelectField, RHFTextField} from "@/app/components/comm/RHFFields";
 
 declare global {
     interface Window {
@@ -500,14 +502,7 @@ export default function PublicFormStepperPage() {
     const [submitDone, setSubmitDone] = useState(false);
     const [submitErr, setSubmitErr] = useState("");
     const [submitting, setSubmitting] = useState(false);
-    const [notice, setNotice] = useState<Notice | null>(null);
 
-    useEffect(() => {
-        fetch("/api/client/notice", { cache: "no-store" })
-            .then((r) => r.json())
-            .then((j) => setNotice(j.notice || null))
-            .catch(() => setNotice(null));
-    }, []);
     // 필드 DOM ref 맵(포커스/스크롤)
     const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -863,55 +858,48 @@ export default function PublicFormStepperPage() {
                             {/* ----- STEP CONTENTS ----- */}
                             {activeStep === 0 && (
                                 <Stack spacing={2}>
-                                    {notice ? <NoticeCard notice={notice} /> : null}
+                                    <NoticeBlock />
+
                                     <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                                         <Box
-                                            ref={(el : HTMLDivElement | null) => {(fieldRefs.current["name"] = el)}}
+                                            ref={(el: HTMLDivElement | null) => {
+                                                fieldRefs.current["name"] = el;
+                                            }}
                                             sx={{ flex: { sm: 1 }, minWidth: 0 }}
                                         >
-                                            <Controller
+                                            <RHFTextField<FormValues>
                                                 name="name"
                                                 control={control}
-                                                render={({ field }) => (
-                                                    <TextField
-                                                        label="이름"
-                                                        {...field}
-                                                        error={!!errors.name}
-                                                        helperText={errors.name?.message as any}
-                                                        required
-                                                        fullWidth
-                                                    />
-                                                )}
+                                                errors={errors}
+                                                label="이름"
+                                                required
+                                                textFieldProps={{ placeholder: "홍길동" }}
                                             />
                                         </Box>
 
                                         <Box
                                             ref={(el: HTMLDivElement | null) => {
-                                                fieldRefs.current["phone"] = el
+                                                fieldRefs.current["phone"] = el;
                                             }}
                                             sx={{ flex: { sm: 2 }, minWidth: 0 }}
                                         >
-                                            <Controller
+                                            <RHFTextField<FormValues>
                                                 name="phone"
                                                 control={control}
-                                                render={({ field }) => (
-                                                    <TextField
-                                                        label="연락처"
-                                                        value={phone}
-                                                        onChange={(e) => field.onChange(formatPhoneKR(e.target.value))}
-                                                        error={!!errors.phone}
-                                                        helperText={errors.phone?.message as any}
-                                                        inputMode="numeric"
-                                                        placeholder="010-1234-5678"
-                                                        required
-                                                        fullWidth
-                                                    />
-                                                )}
+                                                errors={errors}
+                                                label="연락처"
+                                                required
+                                                transform={formatPhoneKR}
+                                                textFieldProps={{
+                                                    inputMode: "numeric",
+                                                    placeholder: "010-1234-5678",
+                                                }}
                                             />
                                         </Box>
                                     </Stack>
 
                                     <Divider />
+
                                     <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                                         <Box
                                             ref={(el: HTMLDivElement | null) => {
@@ -919,21 +907,13 @@ export default function PublicFormStepperPage() {
                                             }}
                                             sx={{ flex: 1, minWidth: 0 }}
                                         >
-                                            <Controller
+                                            <RHFTextField<FormValues>
                                                 name="start_date"
                                                 control={control}
-                                                render={({ field }) => (
-                                                    <TextField
-                                                        label="공사 시작일(날짜)"
-                                                        type="date"
-                                                        {...field}
-                                                        InputLabelProps={{ shrink: true }}
-                                                        fullWidth
-                                                        required
-                                                        error={!!errors.start_date}
-                                                        helperText={errors.start_date?.message as any}
-                                                    />
-                                                )}
+                                                errors={errors}
+                                                label="공사 시작일(날짜)"
+                                                required
+                                                textFieldProps={{ type: "date" }}
                                             />
                                         </Box>
 
@@ -943,45 +923,36 @@ export default function PublicFormStepperPage() {
                                             }}
                                             sx={{ flex: 1, minWidth: 0 }}
                                         >
-                                            <Controller
+                                            <RHFTextField<FormValues>
                                                 name="move_in_date"
                                                 control={control}
-                                                render={({ field }) => (
-                                                    <TextField
-                                                        label="입주 예정일(날짜)"
-                                                        type="date"
-                                                        {...field}
-                                                        InputLabelProps={{ shrink: true }}
-                                                        fullWidth
-                                                        required
-                                                        error={!!errors.move_in_date}
-                                                        helperText={errors.move_in_date?.message as any}
-                                                    />
-                                                )}
+                                                errors={errors}
+                                                label="입주 예정일(날짜)"
+                                                required
+                                                textFieldProps={{ type: "date" }}
                                             />
                                         </Box>
                                     </Stack>
-                                    {/* --- 주소: 모바일 최적화 --- */}
+
+                                    {/* --- 주소 --- */}
                                     <Stack spacing={1.5}>
-                                        {/* 우편번호 + 주소찾기 (모바일도 한 줄 고정) */}
                                         <Stack direction="row" spacing={1} alignItems="stretch">
-                                            <Box ref={(el :HTMLDivElement | null) => {
-                                                fieldRefs.current["zip_code"] = el
-                                            }} sx={{ flex: 1, minWidth: 0 }}>
-                                                <Controller
+                                            <Box
+                                                ref={(el: HTMLDivElement | null) => {
+                                                    fieldRefs.current["zip_code"] = el;
+                                                }}
+                                                sx={{ flex: 1, minWidth: 0 }}
+                                            >
+                                                <RHFTextField<FormValues>
                                                     name="zip_code"
                                                     control={control}
-                                                    render={({ field }) => (
-                                                        <TextField
-                                                            label="우편번호"
-                                                            {...field}
-                                                            fullWidth
-                                                            InputProps={{ readOnly: true }}
-                                                            error={!!errors.zip_code}
-                                                            helperText={errors.zip_code?.message as any}
-                                                            required
-                                                        />
-                                                    )}
+                                                    errors={errors}
+                                                    label="우편번호"
+                                                    required
+                                                    textFieldProps={{
+                                                        placeholder: "주소찾기를 눌러 선택",
+                                                        InputProps: { readOnly: true },
+                                                    }}
                                                 />
                                             </Box>
 
@@ -994,65 +965,47 @@ export default function PublicFormStepperPage() {
                                             </Button>
                                         </Stack>
 
-                                        {/* 주소찾기 전 안내 */}
                                         {!zipCode ? (
-                                            <Alert severity="info" sx={{py: 0.5 }}>
+                                            <Alert severity="info" sx={{ py: 0.5 }}>
                                                 주소찾기로 주소를 먼저 선택해주세요.
                                             </Alert>
                                         ) : null}
 
-                                        {/* 상세주소 */}
-                                        <Box ref={(el: HTMLDivElement | null) => {
-                                            fieldRefs.current["address_detail"] = el
-                                        }}>
-                                            <Controller
+                                        <Box
+                                            ref={(el: HTMLDivElement | null) => {
+                                                fieldRefs.current["address_detail"] = el;
+                                            }}
+                                        >
+                                            <RHFTextField<FormValues>
                                                 name="address_detail"
                                                 control={control}
-                                                render={({ field }) => (
-                                                    <TextField
-                                                        label="상세주소"
-                                                        {...field}
-                                                        fullWidth
-                                                        disabled={!zipCode}
-                                                        error={!!errors.address_detail}
-                                                        helperText={
-                                                            !zipCode
-                                                                ? "주소를 선택하면 상세주소를 입력할 수 있어요."
-                                                                : (errors.address_detail?.message as any)
-                                                        }
-                                                        required
-                                                    />
-                                                )}
+                                                errors={errors}
+                                                label="상세주소"
+                                                required
+                                                textFieldProps={{
+                                                    disabled: !zipCode,
+                                                    placeholder: zipCode ? "예) 101동 1203호" : "주소 선택 후 입력 가능",
+                                                }}
                                             />
                                         </Box>
                                     </Stack>
 
-
-                                    <Controller
+                                    <RHFSelectField<FormValues>
                                         name="budget_range"
                                         control={control}
-                                        render={({ field }) => (
-                                            <TextField select label="예산 범위" {...field} required fullWidth>
-                                                {BUDGET_RANGE_OPTIONS.map((o) => (
-                                                    <MenuItem key={o.value} value={o.value}>
-                                                        {o.label}
-                                                    </MenuItem>
-                                                ))}
-                                            </TextField>
-                                        )}
+                                        errors={errors}
+                                        label="예산 범위"
+                                        required
+                                        options={BUDGET_RANGE_OPTIONS}
                                     />
-                                    <Controller
+
+                                    <RHFSelectField<FormValues>
                                         name="channel"
                                         control={control}
-                                        render={({ field }) => (
-                                            <TextField select label="알게 된 경로" {...field} required>
-                                                {CHANNEL_OPTIONS.map((o) => (
-                                                    <MenuItem key={o.value} value={o.value}>
-                                                        {o.label}
-                                                    </MenuItem>
-                                                ))}
-                                            </TextField>
-                                        )}
+                                        errors={errors}
+                                        label="알게 된 경로"
+                                        required
+                                        options={CHANNEL_OPTIONS}
                                     />
 
                                     {/* honeypot */}
@@ -1063,7 +1016,7 @@ export default function PublicFormStepperPage() {
 
                             {activeStep === 1 && (
                                 <Stack spacing={2}>
-                                    <QuestionBlock title="원하는 타입 *">
+                                    <QuestionBlock title="원하는 타입 " required>
                                         <Box
                                             ref={(el: HTMLDivElement | null) => {
                                                 fieldRefs.current["desired_type"] = el;
@@ -1099,7 +1052,7 @@ export default function PublicFormStepperPage() {
                                     </QuestionBlock>
 
                                     <QuestionBlock
-                                        title="기확장부(현재 확장된 공간) *"
+                                        title="기확장부(현재 확장된 공간) " required
                                         desc="현재 확장되어 있는 공간을 선택해 주세요."
                                     >
                                         <CheckboxGroupWithUnknown
@@ -1113,7 +1066,7 @@ export default function PublicFormStepperPage() {
                                     </QuestionBlock>
 
                                     <QuestionBlock
-                                        title="확장공사(확장 예정) *"
+                                        title="확장공사(확장 예정) " required
                                         desc="확장 예정인 공간을 선택해 주세요."
                                         divider={false}
                                     >
@@ -1131,7 +1084,7 @@ export default function PublicFormStepperPage() {
 
                             {activeStep === 2 && (
                                 <Stack spacing={2}>
-                                    <QuestionBlock title="샷시 공사 *">
+                                    <QuestionBlock title="샷시 공사 " required>
                                         <CheckboxGroupWithUnknown
                                             name="window_work"
                                             options={WINDOW_WORK_OPTIONS as any}
@@ -1152,7 +1105,7 @@ export default function PublicFormStepperPage() {
 
                                     {/* 부분교체가 아닐 땐 WindowReformSection이 null 반환 */}
                                     <QuestionBlock
-                                        title="샷시 리폼 *"
+                                        title="샷시 리폼 " required
                                         desc="샷시 부분 교체 시 선택사항입니다."
                                     >
                                         <WindowReformSection
@@ -1163,7 +1116,7 @@ export default function PublicFormStepperPage() {
                                         />
                                     </QuestionBlock>
 
-                                    <QuestionBlock title="방문/방문틀 공사 *">
+                                    <QuestionBlock title="방문/방문틀 공사 " required>
                                         <CheckboxGroupWithUnknown
                                             name="door_frame_work"
                                             options={DOOR_FRAME_WORK_OPTIONS as any}
@@ -1184,7 +1137,7 @@ export default function PublicFormStepperPage() {
 
                                     {/* 부분교체가 아닐 땐 DoorFrameReformSection이 null 반환 */}
                                     <QuestionBlock
-                                        title="방문/방문틀 리폼 *"
+                                        title="방문/방문틀 리폼 " required
                                         desc="방문/방문틀 부분 교체 시 선택사항입니다."
                                         divider={false}
                                     >
@@ -1200,7 +1153,7 @@ export default function PublicFormStepperPage() {
 
                             {activeStep === 3 && (
                                 <Stack spacing={2}>
-                                    <QuestionBlock title="바닥 철거 공사 *">
+                                    <QuestionBlock title="바닥 철거 공사 " required>
                                         <CheckboxGroupWithUnknown
                                             name="floor_demolition"
                                             options={FLOOR_DEMOLITION_OPTIONS as any}
@@ -1220,7 +1173,7 @@ export default function PublicFormStepperPage() {
                                         />
                                     </QuestionBlock>
 
-                                    <QuestionBlock title="바닥 공사 *">
+                                    <QuestionBlock title="바닥 공사 " required>
                                         <CheckboxGroupWithUnknown
                                             name="floor_work"
                                             options={FLOOR_WORK_OPTIONS as any}
@@ -1240,7 +1193,7 @@ export default function PublicFormStepperPage() {
                                         />
                                     </QuestionBlock>
 
-                                    <QuestionBlock title="몰딩 공사 *">
+                                    <QuestionBlock title="몰딩 공사 " required>
                                         <CheckboxGroupWithUnknown
                                             name="molding_work"
                                             options={MOLDING_WORK_OPTIONS as any}
@@ -1259,7 +1212,7 @@ export default function PublicFormStepperPage() {
                                         />
                                     </QuestionBlock>
 
-                                    <QuestionBlock title="중문 공사 *">
+                                    <QuestionBlock title="중문 공사 " required>
                                         <CheckboxGroupWithUnknown
                                             name="partition_door"
                                             options={PARTITION_DOOR_OPTIONS as any}
@@ -1278,7 +1231,7 @@ export default function PublicFormStepperPage() {
                                         />
                                     </QuestionBlock>
 
-                                    <QuestionBlock title="필름 공사 *" divider={false}>
+                                    <QuestionBlock title="필름 공사 " required divider={false}>
                                         <CheckboxGroupWithUnknown
                                             name="film_work"
                                             options={FILM_WORK_OPTIONS as any}
@@ -1301,7 +1254,7 @@ export default function PublicFormStepperPage() {
 
                             {activeStep === 4 && (
                                 <Stack spacing={2}>
-                                    <QuestionBlock title="욕실 공사 *">
+                                    <QuestionBlock title="욕실 공사 " required>
                                         <CheckboxGroupWithUnknown
                                             name="bathroom_work"
                                             options={BATHROOM_WORK_OPTIONS as any}
@@ -1320,7 +1273,7 @@ export default function PublicFormStepperPage() {
                                         />
                                     </QuestionBlock>
 
-                                    <QuestionBlock title="타일 공사 *">
+                                    <QuestionBlock title="타일 공사 " required>
                                         <CheckboxGroupWithUnknown
                                             name="tile_work"
                                             options={TILE_WORK_OPTIONS as any}
@@ -1339,7 +1292,7 @@ export default function PublicFormStepperPage() {
                                         />
                                     </QuestionBlock>
 
-                                    <QuestionBlock title="벽체 마감 공사 *" divider={false}>
+                                    <QuestionBlock title="벽체 마감 공사 " required divider={false}>
                                         <CheckboxGroupWithUnknown
                                             name="wall_finish"
                                             options={WALL_FINISH_OPTIONS as any}
@@ -1363,8 +1316,8 @@ export default function PublicFormStepperPage() {
                             {activeStep === 5 && (
                                 <Stack spacing={2}>
                                     <QuestionBlock
-                                        title="전기 공사 *"
-                                        desc="*가견적상, 기본적으로 주로 사용하는 제품으로 배치 및 갯수 설정 됩니다. 정확한 수치는 추후 조정 될 예정입니다.*"
+                                        title="전기 공사 "
+                                        desc="*가견적상, 기본적으로 주로 사용하는 제품으로 배치 및 갯수 설정 됩니다. 정확한 수치는 추후 조정 될 예정입니다."
                                     >
                                         <CheckboxGroupWithUnknown
                                             name="electrical_work"
@@ -1384,7 +1337,7 @@ export default function PublicFormStepperPage() {
                                         />
                                     </QuestionBlock>
 
-                                    <QuestionBlock title="베란다 벽면 탄성코트 공사 *">
+                                    <QuestionBlock title="베란다 벽면 탄성코트 공사 " required>
                                         <CheckboxGroupWithUnknown
                                             name="veranda_coat"
                                             options={VERANDA_COAT_OPTIONS as any}
@@ -1404,7 +1357,7 @@ export default function PublicFormStepperPage() {
                                     </QuestionBlock>
 
                                     <QuestionBlock
-                                        title="에어컨 공사(천장형) *"
+                                        title="에어컨 공사(천장형) " required
                                         desc="현장 상황에 따라 천장 단내림 공사가 수반 됩니다."
                                         divider={false}
                                     >
@@ -1430,7 +1383,7 @@ export default function PublicFormStepperPage() {
 
                             {activeStep === 6 && (
                                 <Stack spacing={2}>
-                                    <QuestionBlock title="가구 공사 *" divider={false}>
+                                    <QuestionBlock title="가구 공사" required divider={false}>
                                         <Box
                                             ref={(el: HTMLDivElement | null) => {
                                                 fieldRefs.current["furniture_none"] = el;
@@ -1451,9 +1404,9 @@ export default function PublicFormStepperPage() {
                                                                         setValue("furniture_reform", [], { shouldValidate: false });
                                                                         setValue("furniture_replace_etc", "", { shouldValidate: false });
                                                                         setValue("furniture_reform_etc", "", { shouldValidate: false });
-                                                                        setValue("furniture_none", true, { shouldValidate: true });
+                                                                        setValue("furniture_none", true, { shouldValidate: false });
                                                                     } else {
-                                                                        setValue("furniture_none", false, { shouldValidate: true });
+                                                                        setValue("furniture_none", false, { shouldValidate: false });
                                                                     }
                                                                 }}
                                                             />
@@ -1463,20 +1416,51 @@ export default function PublicFormStepperPage() {
                                                 )}
                                             />
                                             {errors?.furniture_none ? (
-                                                <Alert severity="error">{errors.furniture_none?.message}</Alert>
+                                                <Alert severity="error">{errors.furniture_none?.message as any}</Alert>
                                             ) : null}
                                         </Box>
 
-                                        <FurnitureMatrix
-                                            control={control}
-                                            errors={errors}
-                                            setValue={setValue}
-                                            fieldRefs={fieldRefs}
-                                        />
+                                        <FurnitureMatrix control={control} errors={errors} setValue={setValue} fieldRefs={fieldRefs} />
+                                    </QuestionBlock>
 
-                                        <Divider sx={{ my: 1 }} />
+                                    {/* (선택) 교체/리폼 기타 텍스트가 따로 있다면 RHFTextField로 통일 */}
+                                    {(useWatch({ control, name: "furniture_replace" }) as string[] | undefined)?.includes("기타") ? (
+                                        <Box
+                                            ref={(el: HTMLDivElement | null) => {
+                                                fieldRefs.current["furniture_replace_etc"] = el;
+                                            }}
+                                        >
+                                            <RHFTextField<FormValues>
+                                                name="furniture_replace_etc"
+                                                control={control}
+                                                errors={errors}
+                                                label="가구 교체 - 기타 내용"
+                                                required
+                                                textFieldProps={{ placeholder: "예) 상부장 추가, 길이 변경 등" }}
+                                            />
+                                        </Box>
+                                    ) : null}
 
-                                        <Typography fontWeight={900}>평면도 첨부</Typography>
+                                    {(useWatch({ control, name: "furniture_reform" }) as string[] | undefined)?.includes("기타") ? (
+                                        <Box
+                                            ref={(el: HTMLDivElement | null) => {
+                                                fieldRefs.current["furniture_reform_etc"] = el;
+                                            }}
+                                        >
+                                            <RHFTextField<FormValues>
+                                                name="furniture_reform_etc"
+                                                control={control}
+                                                errors={errors}
+                                                label="가구 리폼 - 기타 내용"
+                                                required
+                                                textFieldProps={{ placeholder: "예) 문짝만 교체, 도장 리폼 등" }}
+                                            />
+                                        </Box>
+                                    ) : null}
+
+                                    <Divider sx={{ my: 1 }} />
+
+                                    <QuestionBlock title="평면도 첨부" required>
                                         <Typography variant="body2" color="text.secondary">
                                             평면도가 아닌 파일은 온라인 견적에 반영이 어려울 수 있어요. (PDF/이미지 권장)
                                         </Typography>
@@ -1486,9 +1470,7 @@ export default function PublicFormStepperPage() {
                                                 fieldRefs.current["plans"] = el;
                                             }}
                                         >
-                                            {errors?.plans ? (
-                                                <Alert severity="error">{errors.plans?.message as any}</Alert>
-                                            ) : null}
+                                            {errors?.plans ? <Alert severity="error">{errors.plans?.message as any}</Alert> : null}
 
                                             <Button variant="outlined" component="label" sx={{ mt: 1 }}>
                                                 파일 추가
@@ -1526,79 +1508,65 @@ export default function PublicFormStepperPage() {
                                                 </Typography>
                                             )}
                                         </Box>
+                                    </QuestionBlock>
 
-                                        <Divider sx={{ my: 1 }} />
+                                    <Divider sx={{ my: 1 }} />
 
-                                        <Box
-                                            ref={(el: HTMLDivElement | null) => {
-                                                fieldRefs.current["inquiry_note"] = el;
+                                    <Box
+                                        ref={(el: HTMLDivElement | null) => {
+                                            fieldRefs.current["inquiry_note"] = el;
+                                        }}
+                                    >
+                                        <RHFTextField<FormValues>
+                                            name="inquiry_note"
+                                            control={control}
+                                            errors={errors}
+                                            label="기타 문의 사항"
+                                            textFieldProps={{
+                                                multiline: true,
+                                                minRows: 3,
+                                                placeholder: "원하시는 스타일, 요청사항, 참고할 점 등을 적어주세요.",
                                             }}
-                                        >
-                                            <Controller
-                                                name="inquiry_note"
-                                                control={control}
-                                                render={({ field }) => (
-                                                    <TextField
-                                                        label="기타 문의 사항"
-                                                        {...field}
-                                                        fullWidth
-                                                        multiline
-                                                        minRows={3}
-                                                        placeholder="원하시는 스타일, 요청사항, 참고할 점 등을 적어주세요."
-                                                    />
-                                                )}
-                                            />
-                                        </Box>
+                                        />
+                                    </Box>
 
-                                        <Divider sx={{ my: 1 }} />
+                                    <Divider sx={{ my: 1 }} />
 
-                                        <Box
-                                            ref={(el: HTMLDivElement | null) => {
-                                                fieldRefs.current["consult_confirm"] = el;
-                                            }}
-                                        >
-                                            <Typography fontWeight={900} sx={{ mt: 1 }}>
-                                                * 위 내용 바탕으로 간단한 상담은 전화로 진행됩니다. *
-                                            </Typography>
+                                    <Box
+                                        ref={(el: HTMLDivElement | null) => {
+                                            fieldRefs.current["consult_confirm"] = el;
+                                        }}
+                                    >
+                                        <Typography fontWeight={900} sx={{ mt: 1 }}>
+                                            위 내용 바탕으로 간단한 상담은 전화로 진행됩니다.
+                                        </Typography>
 
-                                            <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: "pre-line", mt: 1 }}>
-                                                {`※ 유선 상담의 경우, 20~30분 소요 됩니다. 단순한 사항과 필수로 측정 되기에 정확하지 않을 수 있습니다.
+                                        <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: "pre-line", mt: 1 }}>
+                                            {`※ 유선 상담의 경우, 20~30분 소요 됩니다. 단순한 사항과 필수로 측정 되기에 정확하지 않을 수 있습니다.
 상담 문의가 많아 일주일 이상 연락이 닿지 않는 경우에는 별도 메시지 또는 DM 보내주시면 감사 하겠습니다.
 
 ※ 내방 상담의 경우, 예약제로 진행되고 있습니다. 사전에 꼭 미리 연락 부탁드리겠습니다.
 1~2시간 상담이 이뤄진 후, 상세 견적서를 매우 디테일 하여,
 공사가 끝났을 때의 최종 견적서와 크게 다르지 않기에 구체적인 사양 & 예산을 잡기에 더욱 좋습니다.`}
-                                            </Typography>
-
-                                            <Controller
-                                                name="consult_confirm"
-                                                control={control}
-                                                render={({ field }) => (
-                                                    <TextField
-                                                        select
-                                                        label="상담 진행 방식 확인 *"
-                                                        {...field}
-                                                        fullWidth
-                                                        sx={{ mt: 1 }}
-                                                        error={!!errors.consult_confirm}
-                                                        helperText={errors.consult_confirm?.message as any}
-                                                        required
-                                                    >
-                                                        <MenuItem value="phone">
-                                                            예, 이해하였습니다. [유선 상담]으로 진행하겠습니다.
-                                                        </MenuItem>
-                                                        <MenuItem value="office">
-                                                            예, 이해하였습니다. [내방 미팅]으로 진행하겠습니다.
-                                                        </MenuItem>
-                                                    </TextField>
-                                                )}
-                                            />
-                                        </Box>
-
-                                        <Typography variant="caption" color="text.secondary">
-                                            제출 시 입력하신 정보는 상담 목적으로만 사용됩니다.
                                         </Typography>
-                                    </QuestionBlock>
+
+                                        <RHFSelectField<FormValues>
+                                            name="consult_confirm"
+                                            control={control}
+                                            errors={errors}
+                                            label="상담 진행 방식 확인"
+                                            required
+                                            options={[
+                                                { value: "phone", label: "예, 이해하였습니다. [유선 상담]으로 진행하겠습니다." },
+                                                { value: "office", label: "예, 이해하였습니다. [내방 미팅]으로 진행하겠습니다." },
+                                            ]}
+                                            textFieldProps={{ sx: { mt: 1 } }}
+                                        />
+                                    </Box>
+
+                                    <Typography variant="caption" color="text.secondary">
+                                        제출 시 입력하신 정보는 상담 목적으로만 사용됩니다.
+                                    </Typography>
                                 </Stack>
                             )}
 
@@ -2002,18 +1970,31 @@ function FurnitureMatrix({
 }
 function QuestionBlock({
                            title,
+                           required,
                            desc,
                            children,
                            divider = true,
                        }: {
     title: string;
+    required?: boolean;
     desc?: string;
     children: React.ReactNode;
     divider?: boolean;
 }) {
     return (
         <Stack spacing={1.25}>
-            <Typography fontWeight={900}>{title}</Typography>
+            <Stack direction="row" spacing={1} alignItems="center">
+                <Typography fontWeight={900}>{title}</Typography>
+                {required ? (
+                    <Chip
+                        size="small"
+                        label="필수"
+                        color="error"
+                        variant="outlined"
+                        sx={{ height: 20, fontWeight: 900, "& .MuiChip-label": { px: 0.75 } }}
+                    />
+                ) : null}
+            </Stack>
 
             {desc ? (
                 <Typography fontWeight={400} color="text.secondary">
@@ -2028,56 +2009,3 @@ function QuestionBlock({
     );
 }
 
-function NoticeCard({ notice }: { notice: Notice }) {
-    return (
-        <Card variant="outlined" sx={{ borderRadius: 3 }}>
-            <CardContent>
-                <Typography fontWeight={900} sx={{ fontSize: 18 }}>
-                    {notice.title}
-                </Typography>
-                {notice.subtitle ? (
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                        {notice.subtitle}
-                    </Typography>
-                ) : null}
-
-                <Divider sx={{ my: 1 }} />
-
-                {notice.closedMonths?.length ? (
-                    <Stack spacing={0.25} sx={{ mb: 1 }}>
-                        <Typography fontWeight={900} variant="body2">※ 공지사항</Typography>
-                        {notice.closedMonths.map((m) => (
-                            <Typography key={m} variant="body2">[{m}] 마감</Typography>
-                        ))}
-                    </Stack>
-                ) : null}
-
-                {notice.openInfo?.length ? (
-                    <Stack spacing={0.25} sx={{ mb: 1 }}>
-                        {notice.openInfo.map((t) => (
-                            <Typography key={t} variant="body2">{t}</Typography>
-                        ))}
-                    </Stack>
-                ) : null}
-
-                {notice.phone ? <Typography variant="body2">{notice.phone}</Typography> : null}
-
-                {notice.regionText ? (
-                    <Typography variant="body2" sx={{ mt: 1 }}>
-                        {notice.regionText}
-                    </Typography>
-                ) : null}
-
-                {notice.extra?.length ? (
-                    <Stack spacing={0.25} sx={{ mt: 1 }}>
-                        {notice.extra.map((t) => (
-                            <Typography key={t} variant="body2" color="text.secondary">
-                                • {t}
-                            </Typography>
-                        ))}
-                    </Stack>
-                ) : null}
-            </CardContent>
-        </Card>
-    );
-}

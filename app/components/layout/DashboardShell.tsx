@@ -20,7 +20,7 @@ import {
 import { useTheme } from "@mui/material/styles";
 
 import InboxIcon from "@mui/icons-material/Inbox";
-import SettingsIcon from "@mui/icons-material/Settings";
+import {NotificationsNone,Settings} from "@mui/icons-material";
 
 import TopBar from "./TopBar";
 import { TopBarActionsProvider } from "../contexts/topbar-actions";
@@ -49,7 +49,8 @@ export default function DashboardShell({ children }: { children: React.ReactNode
     const navItems: NavItem[] = useMemo(
         () => [
             { label: "Inbox", href: "/", icon: <InboxIcon /> },
-            { label: "Settings", href: "/admin/notice", icon: <SettingsIcon /> },
+            { label: "Notice", href: "/admin/notice", icon: <NotificationsNone /> },
+            { label: "Rules", href: "/admin/rules", icon: <Settings /> },
         ],
         []
     );
