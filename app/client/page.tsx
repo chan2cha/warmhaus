@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
     Box,
     Card,
@@ -119,7 +120,7 @@ export default function ClientCoverPage() {
                     position: "absolute",
                     inset: 0,
                     background:
-                        "linear-gradient(to bottom, rgba(255,255,255,0) 45%, rgba(255,255,255,0.92) 70%, rgba(255,255,255,1) 85%)",
+                        "linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(255,255,255,0) 35%, rgba(255,255,255,0.94) 70%, rgba(255,255,255,1) 85%)",
                 }}
             />
 
@@ -131,8 +132,13 @@ export default function ClientCoverPage() {
                     maxWidth: 520,
                     mx: "auto",
                     px: 2,
-                    pt: 7,
-                    pb: 4,
+
+                    // ✅ 위 여백 줄이고
+                    pt: { xs: 3, sm: 7 },
+
+                    // ✅ 아래 여백 크게(모바일에서 더 내려감)
+                    pb: { xs: 1, sm: 4 },
+
                     minHeight: "100dvh",
                     display: "flex",
                     flexDirection: "column",
@@ -185,7 +191,29 @@ export default function ClientCoverPage() {
                                     external
                                     label={`${BRAND} 홈페이지`}
                                     icon={<HomeRoundedIcon />}
-
+                                    leftAvatar={
+                                        <Box
+                                            sx={{
+                                                width: 34,
+                                                height: 34,
+                                                borderRadius: 1.2,
+                                                overflow: "hidden",
+                                                border: "1px solid",
+                                                borderColor: "divider",
+                                                bgcolor: "background.paper",
+                                                flexShrink: 0,
+                                            }}
+                                        >
+                                            <Image
+                                                src="/warmhaus.png"   // ✅ public 기준 경로
+                                                alt="WarmHaus"
+                                                width={34}
+                                                height={34}
+                                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                                priority
+                                            />
+                                        </Box>
+                                    }
                                 />
 
                                 <LinkButton
