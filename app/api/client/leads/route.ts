@@ -79,10 +79,8 @@ export async function POST(req: Request) {
     const row = {
         name,
         phone,
-        email: (body.email || "").trim() || null,
         type: (body.type || "").trim() || null,
         address_full,
-        area: (body.area || "").trim() || null,
         year_built: (body.year_built || "").trim() || null,
 
         zip_code: body.zip_code || null,
@@ -96,11 +94,12 @@ export async function POST(req: Request) {
         budget_raw: budget_raw || null,
 
         start_date: body.start_date || null,
-        movein_date: body.movein_date || null, // ✅ 키 불일치 보정
+        move_in_date: body.move_in_date || null, // ✅ 키 불일치 보정
 
         grade, // ✅ 여기!
         status: "NEW",
         source: "public_form",
+        spec:body.spec
     };
 
     const { data, error } = await supabaseAdmin
