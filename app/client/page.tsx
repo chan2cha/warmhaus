@@ -25,6 +25,8 @@ type LinkButtonProps = {
 };
 
 function LinkButton({ href, icon, label, external, leftAvatar }: LinkButtonProps) {
+    const LEFT_W = 34;   // 로고 자리
+    const RIGHT_W = 28;  // 아이콘 자리(대충)
     const content = (
         <Box
             sx={{
@@ -45,16 +47,28 @@ function LinkButton({ href, icon, label, external, leftAvatar }: LinkButtonProps
                 },
             }}
         >
-            {/* 왼쪽 작은 썸네일(옵션) */}
-            {leftAvatar ? <Box sx={{ width: 34, height: 34 }}>{leftAvatar}</Box> : null}
+            {/* ✅ 좌측 슬롯: 항상 동일 폭 */}
+            <Box sx={{ width: LEFT_W, height: LEFT_W, flexShrink: 0, display: "flex", alignItems: "center" }}>
+                {leftAvatar ?? <Box sx={{ width: LEFT_W, height: LEFT_W }} />}
+            </Box>
 
-            {/* 가운데 텍스트 */}
+            {/* ✅ 가운데 텍스트: 진짜 중앙 */}
             <Typography sx={{ fontWeight: 800, flex: 1, textAlign: "center" }}>
                 {label}
             </Typography>
 
-            {/* 오른쪽 아이콘 */}
-            <Box sx={{ opacity: 0.85 }}>{icon}</Box>
+            {/* ✅ 우측 슬롯: 항상 동일 폭 */}
+            <Box
+                sx={{
+                    width: RIGHT_W,
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    flexShrink: 0,
+                    opacity: 0.85,
+                }}
+            >
+                {icon}
+            </Box>
         </Box>
     );
 

@@ -8,7 +8,6 @@ import {
     Button,
     Card,
     CardContent,
-    MenuItem,
     Stack,
     Step,
     StepLabel,
@@ -30,21 +29,13 @@ declare global {
         daum?: any;
     }
 }
-type Notice = {
-    title: string;
-    subtitle?: string;
-    phone?: string;
-    regionText?: string;
-    closedMonths?: string[];
-    openInfo?: string[];
-    extra?: string[];
-};
 const TYPE_OPTIONS = [
     { value: "LOW", label: "Low (부분공사) / 당분간은 어렵습니다" },
     { value: "MIDDLE", label: "Middle (올철거)" },
     { value: "HIGH", label: "High (올철거)" },
 ] ;
 const CHANNEL_OPTIONS = [
+
     { value: "blog", label: "블로그" },
     { value: "instagram", label: "인스타" },
     { value: "cafe", label: "카페" },
@@ -269,11 +260,16 @@ const FormSchema = z.object({
     start_date: z.string().min(1, "공사 시작일을 선택해주세요."),
     move_in_date: z.string().min(1, "입주 예정일을 선택해주세요."),
 
-    zip_code: z.string().min(1, "주소찾기로 주소를 선택해주세요."),
+    zip_code: z.string().default(""),
     address_road: z.string().default(""),
     address_jibun: z.string().default(""),
     address_detail: z.string().min(1, "상세주소를 입력해주세요."),
+    baseAddrText: z.string().default(""),
 
+    area_pyeong: z
+        .string()
+        .min(1, "면적(평)을 입력해주세요.")
+        .regex(/^\s*\d+(\.\d+)?\s*\/\s*\d+(\.\d+)?\s*$/, "형식: 공급/전용 (예: 34/25.7)"),
     // Step2 (예시: 확장)
     extension_existing: z.array(z.string()).min(1, "현재 확장부를 선택해주세요."),
     extension_plan: z.array(z.string()).min(1, "확장공사를 선택해주세요."),
@@ -347,6 +343,16 @@ const FormSchema = z.object({
                 message: "입주 예정일은 공사 시작일 이후여야 합니다.",
             });
         }
+    }
+
+    // ✅ 주소(도로명/지번) 최소 1개는 있어야 함
+    const hasBaseAddr = !!(val.address_road?.trim() || val.address_jibun?.trim());
+    if (!hasBaseAddr) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["address_road"], // 표시용(도로명)으로 걸자
+            message: "주소찾기로 주소를 선택해주세요.",
+        });
     }
     const partialKeys = ["확장부만 교체", "내창만 교체", "외창만 교체"];
     const hasPartial = (val.window_work || []).some((v) => partialKeys.includes(v));
@@ -503,6 +509,7 @@ export default function PublicFormStepperPage() {
     const [submitErr, setSubmitErr] = useState("");
     const [submitting, setSubmitting] = useState(false);
 
+
     // 필드 DOM ref 맵(포커스/스크롤)
     const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -519,13 +526,14 @@ export default function PublicFormStepperPage() {
         defaultValues: {
             name: "",
             phone: "",
-            channel: "blog",
+            channel: "",
             budget_range: "4000_5000",
             desired_type: "",
             zip_code: "",
             address_road: "",
             address_jibun: "",
             address_detail: "",
+            area_pyeong: "",
             start_date: "",
             move_in_date: "",
             extension_existing: [],
@@ -583,9 +591,17 @@ export default function PublicFormStepperPage() {
         mode: "onTouched",
     });
 
-    const phone = useWatch({ control, name: "phone" });
+
     const plans = useWatch({ control, name: "plans" }) as any[];
-    const zipCode = useWatch({ control, name: "zip_code" });
+    const addressRoad = useWatch({ control, name: "address_road" });
+    const addressJibun = useWatch({ control, name: "address_jibun" });
+    const furnitureReplace = useWatch({ control, name: "furniture_replace" }) as string[] | undefined;
+    const furnitureReform = useWatch({ control, name: "furniture_reform" }) as string[] | undefined;
+
+    const showReplaceEtc = (furnitureReplace || []).includes("기타");
+    const showReformEtc = (furnitureReform || []).includes("기타");
+    const hasBaseAddr = !!((addressRoad || "").trim() || (addressJibun || "").trim());
+    const baseAddrText = ((addressRoad || "").trim() || (addressJibun || "").trim());
     // 주소 전체 문자열
     const addressFull = useMemo(() => {
         const v = getValues();
@@ -600,8 +616,8 @@ export default function PublicFormStepperPage() {
         }
         new window.daum.Postcode({
             oncomplete: function (data: any) {
-                setValue("zip_code", data.zonecode || "", { shouldValidate: true });
-                setValue("address_road", (data.roadAddress || "").trim());
+                setValue("zip_code", data.zonecode || "");
+                setValue("address_road", (data.roadAddress || "").trim(),{shouldValidate:true});
                 setValue("address_jibun", (data.jibunAddress || "").trim());
                 setTimeout(() => setFocus("address_detail"), 0);
             },
@@ -682,12 +698,12 @@ export default function PublicFormStepperPage() {
                     address_jibun: data.address_jibun,
                     address_detail: data.address_detail,
                     address_full: addressFull,
+                    area_pyeong: data.area_pyeong,
+
 
                     // 예시 spec (여기에 공사항목 다 넣어 확장)
                     spec: {
-                        //
-                        start_date: data.start_date,
-                        move_in_date: data.move_in_date,
+
                         // 확장/구조
                         extension_existing: data.extension_existing,
                         extension_plan: data.extension_plan,
@@ -911,7 +927,7 @@ export default function PublicFormStepperPage() {
                                                 name="start_date"
                                                 control={control}
                                                 errors={errors}
-                                                label="공사 시작일(날짜)"
+                                                label="공사 시작일(예정 날짜)"
                                                 required
                                                 textFieldProps={{ type: "date" }}
                                             />
@@ -927,7 +943,7 @@ export default function PublicFormStepperPage() {
                                                 name="move_in_date"
                                                 control={control}
                                                 errors={errors}
-                                                label="입주 예정일(날짜)"
+                                                label="입주 예정일(예정 날짜)"
                                                 required
                                                 textFieldProps={{ type: "date" }}
                                             />
@@ -939,18 +955,20 @@ export default function PublicFormStepperPage() {
                                         <Stack direction="row" spacing={1} alignItems="stretch">
                                             <Box
                                                 ref={(el: HTMLDivElement | null) => {
-                                                    fieldRefs.current["zip_code"] = el;
+                                                    fieldRefs.current["address_road"] = el;
                                                 }}
                                                 sx={{ flex: 1, minWidth: 0 }}
                                             >
+                                                {/* ✅ 주소 표시(도로명 우선, 없으면 지번) */}
                                                 <RHFTextField<FormValues>
-                                                    name="zip_code"
+                                                    name="address_road"
                                                     control={control}
                                                     errors={errors}
-                                                    label="우편번호"
+                                                    label="현장 주소"
                                                     required
                                                     textFieldProps={{
                                                         placeholder: "주소찾기를 눌러 선택",
+                                                        value: baseAddrText,              // ✅ 표시값 강제
                                                         InputProps: { readOnly: true },
                                                     }}
                                                 />
@@ -965,7 +983,7 @@ export default function PublicFormStepperPage() {
                                             </Button>
                                         </Stack>
 
-                                        {!zipCode ? (
+                                        {!hasBaseAddr  ? (
                                             <Alert severity="info" sx={{ py: 0.5 }}>
                                                 주소찾기로 주소를 먼저 선택해주세요.
                                             </Alert>
@@ -983,13 +1001,29 @@ export default function PublicFormStepperPage() {
                                                 label="상세주소"
                                                 required
                                                 textFieldProps={{
-                                                    disabled: !zipCode,
-                                                    placeholder: zipCode ? "예) 101동 1203호" : "주소 선택 후 입력 가능",
+                                                    disabled: !hasBaseAddr,
+                                                    placeholder: hasBaseAddr ? "예) 101동 1203호" : "주소 선택 후 입력 가능",
                                                 }}
                                             />
                                         </Box>
                                     </Stack>
-
+                                    <Box
+                                        ref={(el: HTMLDivElement | null) => {
+                                            fieldRefs.current["area_pyeong"] = el;
+                                        }}
+                                    >
+                                        <RHFTextField<FormValues>
+                                            name="area_pyeong"
+                                            control={control}
+                                            errors={errors}
+                                            label="공급 면적 / 전용 면적 (㎡/평)"
+                                            required
+                                            textFieldProps={{
+                                                inputMode: "text",
+                                                placeholder: "예) 143㎡/114 ㎡ 또는 43평/34평",
+                                            }}
+                                        />
+                                    </Box>
                                     <RHFSelectField<FormValues>
                                         name="budget_range"
                                         control={control}
@@ -1424,7 +1458,7 @@ export default function PublicFormStepperPage() {
                                     </QuestionBlock>
 
                                     {/* (선택) 교체/리폼 기타 텍스트가 따로 있다면 RHFTextField로 통일 */}
-                                    {(useWatch({ control, name: "furniture_replace" }) as string[] | undefined)?.includes("기타") ? (
+                                    {showReplaceEtc  ? (
                                         <Box
                                             ref={(el: HTMLDivElement | null) => {
                                                 fieldRefs.current["furniture_replace_etc"] = el;
@@ -1441,7 +1475,7 @@ export default function PublicFormStepperPage() {
                                         </Box>
                                     ) : null}
 
-                                    {(useWatch({ control, name: "furniture_reform" }) as string[] | undefined)?.includes("기타") ? (
+                                    {showReformEtc ? (
                                         <Box
                                             ref={(el: HTMLDivElement | null) => {
                                                 fieldRefs.current["furniture_reform_etc"] = el;

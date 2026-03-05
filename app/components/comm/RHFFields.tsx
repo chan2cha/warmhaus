@@ -55,7 +55,7 @@ type RHFTextFieldProps<T extends FieldValues> = {
     side?: LabelSide;
     textFieldProps?: Omit<
         TextFieldProps,
-        "name" | "value" | "onChange" | "error" | "helperText" | "defaultValue"
+        "name"  | "onChange" | "error" | "helperText" | "defaultValue"
     >;
     transform?: (next: string) => string;
 };

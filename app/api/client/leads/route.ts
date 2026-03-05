@@ -89,6 +89,7 @@ export async function POST(req: Request) {
         address_road: body.address_road || null,
         address_jibun: body.address_jibun || null,
         address_detail: body.address_detail || null,
+        area_pyeong : body.area_pyeong || null,
 
         channel: (body.channel || "direct_form").trim(),
         budget_range: budget_range || null, // ✅ 컬럼 있으면 저장

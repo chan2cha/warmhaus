@@ -61,7 +61,7 @@ function NoticeCard({ notice }: { notice: Notice }) {
                         size="small"
                         variant="contained"
                         startIcon={<PhoneInTalkIcon />}
-                        href={`${notice.phone}`}
+                        href={`tel:${notice.phone}`}
                         sx={{
                             borderRadius: 999,
                             px: 1.5,
@@ -91,7 +91,8 @@ function NoticeCard({ notice }: { notice: Notice }) {
                                 key={`${t}-${idx}`}
                                 label={t}
                                 size="small"
-                                color={/마감/.test(t) ? "warning" : "info"}
+
+                                //color={/마감/.test(t) ? "warning" : "info"}
                                 sx={{
                                     height:"auto",
                                     width: "fit-content",
