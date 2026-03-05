@@ -14,3 +14,6 @@ export type Notice = {
     phone?: string;
     extra?: string[];
 };
+
+type PreferredSlot = { startLocal: string };
+

@@ -49,7 +49,15 @@ async function getRulesBudgets() {
         preferredBudget: Number(v.preferredBudgetManwon ?? 999999),
     };
 }
-
+// datetime-local => ISO
+function localToIso(localDT: string) {
+    const d = new Date(localDT);
+    return isNaN(d.getTime()) ? "" : d.toISOString();
+}
+function addMinutesIso(startIso: string, minutes: number) {
+    const s = new Date(startIso).getTime();
+    return new Date(s + minutes * 60 * 1000).toISOString();
+}
 export async function POST(req: Request) {
     let body: any;
     try {
@@ -75,7 +83,19 @@ export async function POST(req: Request) {
     // ✅ rules에서 최소/선호 예산 가져와서 grade 계산
     const { minBudget, preferredBudget } = await getRulesBudgets();
     const grade: Grade = calcGradeByBudget(budget_range, minBudget, preferredBudget);
+    const consultType =
+        body.consult_confirm === "office" ? "office" : "phone";
 
+    const preferred = Array.isArray(body.preferred_slots)
+        ? body.preferred_slots.map((s:any) => (s || "").trim()).filter(Boolean)
+        : [];
+
+    if (preferred.length < 1) {
+        return NextResponse.json(
+            { error: "preferred_slots required" },
+            { status: 400 }
+        );
+    }
     const row = {
         name,
         phone,
@@ -99,16 +119,61 @@ export async function POST(req: Request) {
         grade, // ✅ 여기!
         status: "NEW",
         source: "public_form",
-        spec:body.spec
+        spec:body.spec,
+        consult_type: consultType,
     };
 
-    const { data, error } = await supabaseAdmin
+    const { data:lead, error:leadErr } = await supabaseAdmin
         .from("leads")
         .insert(row)
         .select("id")
         .single();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (leadErr) return NextResponse.json({ error: leadErr.message }, { status: 500 });
 
-    return NextResponse.json({ ok: true, lead_id: data.id });
+    // 2) appointments (NEGOTIATING) 생성
+    const { data: appt, error: apptErr } = await supabaseAdmin
+        .from("appointments")
+        .insert({
+            lead_id: lead.id,
+            consult_type: consultType,
+            status: "NEGOTIATING",
+        })
+        .select("id")
+        .single();
+
+    if (apptErr) return NextResponse.json({ error: apptErr.message }, { status: 500 });
+
+    // 3) candidates bulk insert (phone=2개 권장/office=3개 권장, 서버에서 컷)
+    const count = consultType === "office" ? 3 : 2;
+    const durationMin = consultType === "office" ? 90 : 30;
+
+    const slots = preferred.slice(0, count);
+
+    const rows = slots.map((local:string, idx:number) => {
+        const startIso = localToIso(local);
+        if (!startIso) {
+            throw new Error("invalid preferred_slots datetime");
+        }
+        const endIso = addMinutesIso(startIso, durationMin);
+
+        return {
+            lead_id: lead.id,
+            appointment_id: appt.id,
+            consult_type: consultType,
+            source: "client",
+            start_at: startIso,
+            end_at: endIso,
+            priority: idx + 1,
+            note: null,
+        };
+    });
+
+    const { error: candErr } = await supabaseAdmin
+        .from("appointment_candidates")
+        .insert(rows);
+
+    if (candErr)  return NextResponse.json({ error: candErr.message }, { status: 500 });
+
+    return NextResponse.json({ ok: true, lead_id: lead.id });
 }

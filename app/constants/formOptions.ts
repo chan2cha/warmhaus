@@ -242,6 +242,10 @@ export const FormSchema = z.object({
     consult_confirm: z
         .string()
         .min(1, "상담 진행 방식 확인 항목을 선택해주세요."),
+    // ✅ 희망 후보(고객 입력)
+    // datetime-local 문자열(예: 2026-03-05T15:00)을 그대로 담음
+    preferred_slots: z.array(z.string()).default([]),
+
     hp: z.string().default(""), // honeypot
 }).superRefine((val, ctx) => {
     if (val.start_date && val.move_in_date) {
@@ -347,6 +351,24 @@ export const FormSchema = z.object({
             });
         }
     }
+    // ✅ 예약 후보 검증(전화/내방 모두: 최소 1개는 필수)
+    const consult = (val.consult_confirm || "").trim();
+    const slots = (val.preferred_slots || [])
+        .map((s) => (s || "").trim())
+        .filter(Boolean);
+
+    if (consult === "phone" || consult === "office") {
+        if (slots.length < 1) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["preferred_slots"],
+                message:
+                    consult === "office"
+                        ? "내방 희망 가능 시간을 최소 1개 입력해주세요."
+                        : "유선 상담 희망 가능 시간을 최소 1개 입력해주세요.",
+            });
+        }
+    }
 });
 
 export type FormValues = z.infer<typeof FormSchema>;
@@ -408,5 +430,5 @@ export const stepFields: Array<Array<keyof FormValues>> = [
         "furniture_none",
         "plans",
         "inquiry_note",
-        "consult_confirm",], // Step6
+        "consult_confirm", "preferred_slots",], // Step6
 ];

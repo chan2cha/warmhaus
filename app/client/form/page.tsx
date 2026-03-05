@@ -186,6 +186,7 @@ export default function PublicFormStepperPage() {
             plans: [],
             inquiry_note: "",
             consult_confirm: "",
+            preferred_slots: ["", "", ""], // ✅ 추가: 항상 3칸 유지(office=3, phone=2만 사용)
         },
         mode: "onTouched",
     });
@@ -203,6 +204,7 @@ export default function PublicFormStepperPage() {
     const showReformEtc = (furnitureReform || []).includes("기타");
     const hasBaseAddr = !!((addressRoad || "").trim() || (addressJibun || "").trim());
     const baseAddrText = ((addressRoad || "").trim() || (addressJibun || "").trim());
+    const consultType = useWatch({ control, name: "consult_confirm" }) as "phone" | "office" | "";
     // 주소 전체 문자열
     const addressFull = useMemo(() => {
         const v = getValues();
@@ -303,7 +305,8 @@ export default function PublicFormStepperPage() {
                     area_pyeong: area_pyeong,
 
                     type:data.desired_type,
-
+                    consult_confirm: data.consult_confirm,
+                    preferred_slots: data.preferred_slots, // ["2026-03-05T15:00", ...] (datetime-local 문자열)
                     // 예시 spec (여기에 공사항목 다 넣어 확장)
                     spec: {
 
@@ -1222,6 +1225,77 @@ export default function PublicFormStepperPage() {
                                             ]}
                                             textFieldProps={{ sx: { mt: 1 } }}
                                         />
+                                        {/* ✅ 희망 후보 입력 (consult_confirm 연동) */}
+                                        <Box
+                                            ref={(el: HTMLDivElement | null) => {
+                                                fieldRefs.current["preferred_slots"] = el;
+                                            }}
+                                        >
+                                            {/* 배열 에러가 걸리면 여기서 메시지 보이게 */}
+                                            {(errors as any)?.preferred_slots ? (
+                                                <Alert severity="error" sx={{ mt: 1 }}>
+                                                    {(errors as any).preferred_slots?.message as any}
+                                                </Alert>
+                                            ) : null}
+
+                                            <Controller
+                                                name="preferred_slots"
+                                                control={control}
+                                                render={({ field }) => {
+                                                    const type = (consultType || "phone") as "phone" | "office";
+                                                    const count = type === "office" ? 3 : 2;
+                                                    const durationMin = type === "office" ? 90 : 30;
+
+                                                    const slots = Array.isArray(field.value) ? field.value : [];
+                                                    const normalized = [...slots];
+                                                    while (normalized.length < 3) normalized.push(""); // 항상 3칸 유지
+
+                                                    const pad2 = (n: number) => String(n).padStart(2, "0");
+                                                    const addMinutesLocal = (localDT: string, minutes: number) => {
+                                                        const d = new Date(localDT);
+                                                        if (isNaN(d.getTime())) return "";
+                                                        const end = new Date(d.getTime() + minutes * 60 * 1000);
+                                                        return `${end.getFullYear()}-${pad2(end.getMonth() + 1)}-${pad2(end.getDate())}T${pad2(
+                                                            end.getHours()
+                                                        )}:${pad2(end.getMinutes())}`;
+                                                    };
+
+                                                    return (
+                                                        <Stack spacing={1} sx={{ mt: 1 }}>
+                                                            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                                                                <Typography fontWeight={900}>
+                                                                    {type === "office" ? "내방" : "유선"} 희망 가능 날짜/시간
+                                                                </Typography>
+                                                                <Chip size="small" variant="outlined" label={`${count}개 입력`} />
+                                                                <Chip size="small" variant="outlined" label={`기본 ${durationMin}분`} />
+                                                            </Stack>
+
+                                                            {normalized.slice(0, count).map((v, i) => (
+                                                                <TextField
+                                                                    key={i}
+                                                                    label={`${i + 1}순위 시작 시간`}
+                                                                    type="datetime-local"
+                                                                    value={v || ""}
+                                                                    onChange={(e) => {
+                                                                        const next = [...normalized];
+                                                                        next[i] = e.target.value;
+                                                                        field.onChange(next);
+                                                                    }}
+                                                                    size="small"
+                                                                    InputLabelProps={{ shrink: true }}
+                                                                    helperText={v ? `종료(자동): ${addMinutesLocal(v, durationMin)}` : ""}
+                                                                    fullWidth
+                                                                />
+                                                            ))}
+
+                                                            <Typography variant="body2" color="text.secondary">
+                                                                * 확정은 통화/메시지 협의 후 관리자가 진행합니다.
+                                                            </Typography>
+                                                        </Stack>
+                                                    );
+                                                }}
+                                            />
+                                        </Box>
                                     </Box>
 
                                     <Typography variant="caption" color="text.secondary">
