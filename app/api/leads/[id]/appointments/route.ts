@@ -3,10 +3,10 @@ import { createSupabaseServerClient } from "lib/ssr";
 
 export async function GET(
     _req: Request,
-    { params }: { params: { id: string } }
+    context: { params: Promise<{ id: string }> }
 ) {
     const supabase = await createSupabaseServerClient();
-    const leadId = params.id;
+    const {id:leadId} = await context.params;
 
     try {
         // (선택) 로그인 체크 - 나중에 권한 붙일 거면 여기서부터 시작하면 됨
