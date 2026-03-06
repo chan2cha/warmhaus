@@ -12,7 +12,7 @@ import {
 import { Controller, Control } from "react-hook-form";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { DateCalendar } from "@mui/x-date-pickers/DateCalendar";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import dayjs, { Dayjs } from "dayjs";
 import "dayjs/locale/ko";
 
@@ -196,20 +196,19 @@ export function PreferredSlotsPicker<T extends FormValuesLike>({
                         </Stack>
 
                         <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="ko">
-                            <Box
-                                sx={{
-                                    border: "1px solid",
-                                    borderColor: "divider",
-                                    borderRadius: 2,
-                                    p: 1,
+                            <DatePicker
+                                label="희망 날짜 선택"
+                                value={selectedDate}
+                                onChange={(v) => setSelectedDate(v)}
+                                disablePast
+                                format="YYYY-MM-DD"
+                                slotProps={{
+                                    textField: {
+                                        fullWidth: true,
+                                        size: "small",
+                                    },
                                 }}
-                            >
-                                <DateCalendar
-                                    value={selectedDate}
-                                    onChange={(v) => setSelectedDate(v)}
-                                    disablePast
-                                />
-                            </Box>
+                            />
                         </LocalizationProvider>
 
                         {fetchErr ? <Alert severity="error">{fetchErr}</Alert> : null}
