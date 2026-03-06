@@ -49,14 +49,21 @@ async function getRulesBudgets() {
         preferredBudget: Number(v.preferredBudgetManwon ?? 999999),
     };
 }
-// datetime-local => ISO
-function localToIso(localDT: string) {
-    const d = new Date(localDT);
+function isValidLocalDateTime(localDT: string) {
+    return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(localDT);
+}
+
+// "2026-03-12T15:00" -> "2026-03-12T06:00:00.000Z"
+function localKstToIso(localDT: string) {
+    if (!isValidLocalDateTime(localDT)) return "";
+    const d = new Date(`${localDT}:00+09:00`);
     return isNaN(d.getTime()) ? "" : d.toISOString();
 }
+
 function addMinutesIso(startIso: string, minutes: number) {
-    const s = new Date(startIso).getTime();
-    return new Date(s + minutes * 60 * 1000).toISOString();
+    const startMs = new Date(startIso).getTime();
+    if (isNaN(startMs)) return "";
+    return new Date(startMs + minutes * 60 * 1000).toISOString();
 }
 export async function POST(req: Request) {
     let body: any;
@@ -150,24 +157,39 @@ export async function POST(req: Request) {
 
     const slots = preferred.slice(0, count);
 
-    const rows = slots.map((local:string, idx:number) => {
-        const startIso = localToIso(local);
-        if (!startIso) {
-            throw new Error("invalid preferred_slots datetime");
-        }
-        const endIso = addMinutesIso(startIso, durationMin);
+    let rows: any[] = [];
 
-        return {
-            lead_id: lead.id,
-            appointment_id: appt.id,
-            consult_type: consultType,
-            source: "client",
-            start_at: startIso,
-            end_at: endIso,
-            priority: idx + 1,
-            note: null,
-        };
-    });
+    try {
+        rows = slots.map((local: string, idx: number) => {
+            const startIso = localKstToIso(local);
+
+            if (!startIso) {
+                throw new Error("invalid preferred_slots datetime");
+            }
+
+            const endIso = addMinutesIso(startIso, durationMin);
+
+            if (!endIso) {
+                throw new Error("invalid preferred_slots duration");
+            }
+
+            return {
+                lead_id: lead.id,
+                appointment_id: appt.id,
+                consult_type: consultType,
+                source: "client",
+                start_at: startIso,
+                end_at: endIso,
+                priority: idx + 1,
+                note: null,
+            };
+        });
+    } catch (e: any) {
+        return NextResponse.json(
+            { error: e.message || "invalid preferred_slots" },
+            { status: 400 }
+        );
+    }
 
     const { error: candErr } = await supabaseAdmin
         .from("appointment_candidates")
