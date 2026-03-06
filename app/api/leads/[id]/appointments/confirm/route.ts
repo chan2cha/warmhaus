@@ -34,7 +34,7 @@ export async function POST(
 
         if (cand.status !== "CUSTOMER_CONFIRMED") {
             return NextResponse.json(
-                { error: "고객이 가능하다고 답한 후보만 확정할 수 있습니다." },
+                { error: "고객 확인이 끝난 후보만 확정할 수 있습니다." },
                 { status: 400 }
             );
         }
@@ -103,7 +103,7 @@ export async function POST(
         const { error: cancelOtherCandidatesErr } = await supabase
             .from("appointment_candidates")
             .update({
-                status: "CANCELLED",
+                status: "CANCELED",
             })
             .eq("lead_id", leadId)
             .neq("id", cand.id)

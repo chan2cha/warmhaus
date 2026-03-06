@@ -28,9 +28,31 @@ export async function POST(
         );
     }
 
-    if (candidate.status === "CANCELLED") {
+    if (candidate.status === "CANCELED") {
         return NextResponse.json(
             { error: "취소된 후보입니다." },
+            { status: 400 }
+        );
+    }
+
+    const { data: otherActive, error: activeErr } = await supabase
+        .from("appointment_candidates")
+        .select("id, status")
+        .eq("lead_id", candidate.lead_id)
+        .neq("id", id)
+        .in("status", ["PENDING", "CUSTOMER_CONFIRMED", "CONFIRMED"])
+        .limit(1);
+
+    if (activeErr) {
+        return NextResponse.json(
+            { error: activeErr.message },
+            { status: 500 }
+        );
+    }
+
+    if (otherActive && otherActive.length > 0) {
+        return NextResponse.json(
+            { error: "이미 진행중인 후보가 있습니다. 먼저 해당 후보를 처리해 주세요." },
             { status: 400 }
         );
     }

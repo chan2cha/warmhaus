@@ -33,7 +33,7 @@ type Lead = {
     phone?: string | null;
     consult_type?: "phone" | "office" | null;
 };
-
+type MessageMode = "propose" | "confirm";
 type Appointment = {
     id: string;
     lead_id: string;
@@ -41,7 +41,6 @@ type Appointment = {
     status: "NEGOTIATING" | "CONFIRMED" | "CANCELED" | "DONE" | "NO_SHOW" | "RESCHEDULE_REQUESTED";
     start_at: string | null;
     end_at: string | null;
-    memo?: string | null;
     cancel_reason?: string | null;
     reschedule_reason?: string | null;
 };
@@ -52,7 +51,7 @@ type CandidateStatus =
     | "CUSTOMER_CONFIRMED"
     | "CUSTOMER_DECLINED"
     | "CONFIRMED"
-    | "CANCELLED";
+    | "CANCELED";
 
 type Candidate = {
     id: string;
@@ -135,7 +134,7 @@ function candidateChipProps(status?: CandidateStatus) {
             return { label: "불가", color: "error" as const };
         case "CONFIRMED":
             return { label: "확정", color: "success" as const };
-        case "CANCELLED":
+        case "CANCELED":
             return { label: "취소", color: "default" as const };
         default:
             return { label: "후보", color: "default" as const };
@@ -231,13 +230,12 @@ export default function AppointmentPanel({ lead }: { lead: Lead }) {
     const [appointment, setAppointment] = useState<Appointment | null>(null);
     const [candidates, setCandidates] = useState<Candidate[]>([]);
 
-    const [confirmOpen, setConfirmOpen] = useState(false);
-    const [confirmTarget, setConfirmTarget] = useState<Candidate | null>(null);
-    const [confirmMemo, setConfirmMemo] = useState("");
 
     const [msgOpen, setMsgOpen] = useState(false);
     const [msgBody, setMsgBody] = useState("");
     const [copied, setCopied] = useState(false);
+
+    const [msgMode, setMsgMode] = useState<MessageMode>("propose");
     const [msgTarget, setMsgTarget] = useState<Candidate | null>(null);
 
     const [cancelOpen, setCancelOpen] = useState(false);
@@ -276,12 +274,22 @@ export default function AppointmentPanel({ lead }: { lead: Lead }) {
         });
         return xs;
     }, [candidates]);
+    const activeCandidate = useMemo(() => {
+        return (
+            sortedCandidates.find((c) => c.status === "CUSTOMER_CONFIRMED") ??
+            sortedCandidates.find((c) => c.status === "PENDING") ??
+            sortedCandidates.find((c) => c.status === "CONFIRMED") ??
+            null
+        );
+    }, [sortedCandidates]);
     const negotiatingCandidate = useMemo(() => {
         return sortedCandidates.find((c) => c.status === "CUSTOMER_CONFIRMED") ?? null;
     }, [sortedCandidates]);
 
     const hasConfirmedAppointment = appointment?.status === "CONFIRMED";
-
+    const canMarkPendingFromDialog =
+        !!msgTarget &&
+        (!activeCandidate || activeCandidate.id === msgTarget.id);
     const effectiveApptStatus: Appointment["status"] =
         appointment?.status === "CONFIRMED"
             ? "CONFIRMED"
@@ -290,10 +298,15 @@ export default function AppointmentPanel({ lead }: { lead: Lead }) {
                 : (appointment?.status || "NEGOTIATING");
 
     const apptChip = statusChipProps(effectiveApptStatus);
-    function openMessageDialog(candidate: Candidate, body: string) {
+    function openMessageDialog(opts: {
+        candidate: Candidate;
+        body: string;
+        mode: MessageMode;
+    }) {
         setCopied(false);
-        setMsgTarget(candidate);
-        setMsgBody(body);
+        setMsgTarget(opts.candidate);
+        setMsgMode(opts.mode);
+        setMsgBody(opts.body);
         setMsgOpen(true);
     }
 
@@ -304,20 +317,14 @@ export default function AppointmentPanel({ lead }: { lead: Lead }) {
             : makePhoneProposeTemplate({ name: lead.name, startIso: c.start_at, durationMin: dur });
     }
 
-    function confirmTemplate(c: Candidate, memo?: string | null) {
+    function confirmTemplate(c: Candidate) {
         const dur = minutesBetween(c.start_at, c.end_at);
-        const base =
-            consultType === "office"
+        return consultType === "office"
                 ? makeOfficeConfirmTemplate({ name: lead.name, startIso: c.start_at })
                 : makePhoneConfirmTemplate({ name: lead.name, startIso: c.start_at, durationMin: dur });
-        return memo ? `${base}\n\n메모: ${memo}` : base;
+
     }
 
-    function openConfirm(c: Candidate) {
-        setConfirmTarget(c);
-        setConfirmMemo("");
-        setConfirmOpen(true);
-    }
 
     async function markCandidatePending(candidateId: string) {
         setLoading(true);
@@ -369,9 +376,15 @@ export default function AppointmentPanel({ lead }: { lead: Lead }) {
             setLoading(false);
         }
     }
-
+    function openConfirmMessage(c: Candidate) {
+        openMessageDialog({
+            candidate: c,
+            mode: "confirm",
+            body: confirmTemplate(c),
+        });
+    }
     async function confirmSelected() {
-        if (!confirmTarget) return;
+        if (!msgTarget) return;
         setLoading(true);
         setErr("");
 
@@ -379,18 +392,20 @@ export default function AppointmentPanel({ lead }: { lead: Lead }) {
             const res = await fetch(`/api/leads/${lead.id}/appointments/confirm`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ candidate_id: confirmTarget.id, memo: confirmMemo || null }),
+                body: JSON.stringify({
+                    candidate_id: msgTarget.id,
+                }),
             });
 
             const json = await res.json().catch(() => ({}));
             if (!res.ok) throw new Error(json.error || "확정 실패");
 
-            setAppointment(json.appointment ?? null);
+            if (json.appointment) setAppointment(json.appointment);
             if (Array.isArray(json.candidates)) setCandidates(json.candidates);
+            else await refresh();
 
-            setConfirmOpen(false);
-            openMessageDialog(confirmTarget, confirmTemplate(confirmTarget, confirmMemo || null));
-            setConfirmTarget(null);
+            setMsgOpen(false);
+            setMsgTarget(null);
         } catch (e: any) {
             setErr(e.message || "확정 에러");
         } finally {
@@ -416,14 +431,16 @@ export default function AppointmentPanel({ lead }: { lead: Lead }) {
 
             setRescheduleOpen(false);
             setActionReason("");
-            await refresh();
+
+            if (json.appointment) setAppointment(json.appointment);
+            if (Array.isArray(json.candidates)) setCandidates(json.candidates);
+            else await refresh();
         } catch (e: any) {
             setErr(e.message || "변경 요청 실패");
         } finally {
             setLoading(false);
         }
     }
-
     async function cancelConfirmedAppointment() {
         if (!appointment?.id) return;
         setLoading(true);
@@ -442,7 +459,10 @@ export default function AppointmentPanel({ lead }: { lead: Lead }) {
 
             setCancelOpen(false);
             setActionReason("");
-            await refresh();
+
+            if (json.appointment) setAppointment(json.appointment);
+            if (Array.isArray(json.candidates)) setCandidates(json.candidates);
+            else await refresh();
         } catch (e: any) {
             setErr(e.message || "예약 취소 실패");
         } finally {
@@ -487,12 +507,6 @@ export default function AppointmentPanel({ lead }: { lead: Lead }) {
                                 </Typography>
                             </Stack>
                         </Alert>
-
-                        {appointment.memo ? (
-                            <Typography variant="body2" color="text.secondary" sx={{ mt: 1, whiteSpace: "pre-line" }}>
-                                메모: {appointment.memo}
-                            </Typography>
-                        ) : null}
 
                         <Stack direction="row" spacing={1} sx={{ mt: 1.25 }}>
                             <Button
@@ -568,8 +582,19 @@ export default function AppointmentPanel({ lead }: { lead: Lead }) {
                     <Stack direction="row" justifyContent="space-between" alignItems="center">
                         <Typography fontWeight={900}>희망 후보</Typography>
                         <Chip size="small" variant="outlined" label={`${sortedCandidates.length}개`} />
-                    </Stack>
 
+                    </Stack>
+                    {activeCandidate?.status === "PENDING" ? (
+                        <Alert severity="info">
+                            현재 {formatDateLine(activeCandidate.start_at)} {formatTimeLine(activeCandidate.start_at)} 후보가 대기중입니다.
+                            다른 후보는 응답 처리 전까지 진행할 수 없습니다.
+                        </Alert>
+                    ) : activeCandidate?.status === "CUSTOMER_CONFIRMED" ? (
+                        <Alert severity="info">
+                            현재 {formatDateLine(activeCandidate.start_at)} {formatTimeLine(activeCandidate.start_at)} 후보가 고객확인 상태입니다.
+                            최종 확정 또는 상태 변경 전까지 다른 후보는 진행할 수 없습니다.
+                        </Alert>
+                    ) : null}
                     {sortedCandidates.length === 0 ? (
                         <Typography variant="body2" color="text.secondary">
                             아직 희망 후보가 없습니다.
@@ -580,14 +605,24 @@ export default function AppointmentPanel({ lead }: { lead: Lead }) {
                                 const dur = minutesBetween(c.start_at, c.end_at);
                                 const chip = candidateChipProps(c.status);
 
+                                const isActiveCandidate = activeCandidate?.id === c.id;
+                                const hasOtherActive = !!activeCandidate && activeCandidate.id !== c.id;
+
                                 const smsDisabled =
-                                    loading || c.status === "PENDING" || c.status === "CONFIRMED" || c.status === "CANCELLED";
+                                    loading ||
+                                    hasOtherActive ||
+                                    c.status === "PENDING" ||
+                                    c.status === "CUSTOMER_CONFIRMED" ||
+                                    c.status === "CONFIRMED" ||
+                                    c.status === "CANCELED";
+
+                                const replyDisabled =
+                                    loading || c.status !== "PENDING" || !isActiveCandidate;
 
                                 const confirmDisabled =
                                     loading ||
                                     hasConfirmedAppointment ||
                                     c.status !== "CUSTOMER_CONFIRMED";
-
                                 return (
                                     <Box
                                         key={c.id}
@@ -632,7 +667,7 @@ export default function AppointmentPanel({ lead }: { lead: Lead }) {
                                                         size="small"
                                                         color="primary"
                                                         disabled={smsDisabled}
-                                                        onClick={() => openMessageDialog(c, proposeTemplate(c))}
+                                                        onClick={() => openMessageDialog({candidate:c,mode:"propose",body:proposeTemplate(c)})}
                                                     >
                                                         <SmsOutlinedIcon fontSize="small" />
                                                     </IconButton>
@@ -645,32 +680,31 @@ export default function AppointmentPanel({ lead }: { lead: Lead }) {
                                                         size="small"
                                                         variant="outlined"
                                                         color="success"
-                                                        disabled={loading}
+                                                        disabled={replyDisabled}
                                                         onClick={() => confirmCustomerReply(c.id, "CONFIRMED")}
                                                     >
-                                                        가능 답변
+                                                        가능
                                                     </Button>
                                                     <Button
                                                         size="small"
                                                         variant="outlined"
                                                         color="error"
-                                                        disabled={loading}
+                                                        disabled={replyDisabled}
                                                         onClick={() => confirmCustomerReply(c.id, "DECLINED")}
                                                     >
-                                                        불가 답변
+                                                        불가
                                                     </Button>
                                                 </>
-                                            ) : null}
-
-                                            <Button
+                                            ) :  <Button
                                                 size="small"
                                                 variant={c.status === "CUSTOMER_CONFIRMED" ? "contained" : "outlined"}
-                                                startIcon={c.status === "PENDING" ? <HourglassEmptyIcon /> : undefined}
                                                 disabled={confirmDisabled}
-                                                onClick={() => openConfirm(c)}
+                                                onClick={() => openConfirmMessage(c)}
                                             >
-                                                {c.status === "PENDING" ? "대기중" : "확정"}
-                                            </Button>
+                                                확정
+                                            </Button>}
+
+
                                         </Stack>
                                     </Box>
                                 );
@@ -679,42 +713,6 @@ export default function AppointmentPanel({ lead }: { lead: Lead }) {
                     )}
                 </Stack>
             </CardContent>
-
-            <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} fullWidth maxWidth="sm">
-                <DialogTitle>예약 확정</DialogTitle>
-                <DialogContent>
-                    <Typography sx={{ mt: 1, fontWeight: 900 }}>
-                        {confirmTarget ? `${formatKstLabel(confirmTarget.start_at)} ~ ${formatKstLabel(confirmTarget.end_at)}` : ""}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                        고객 답변 확인 후 최종 확정합니다.
-                    </Typography>
-
-                    <TextField
-                        label="확정 메모(선택)"
-                        value={confirmMemo}
-                        onChange={(e) => setConfirmMemo(e.target.value)}
-                        size="small"
-                        fullWidth
-                        multiline
-                        minRows={2}
-                        sx={{ mt: 2 }}
-                    />
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setConfirmOpen(false)} disabled={loading}>
-                        취소
-                    </Button>
-                    <Button
-                        onClick={confirmSelected}
-                        variant="contained"
-                        disabled={loading || !confirmTarget || confirmTarget.status !== "CUSTOMER_CONFIRMED"}
-                    >
-                        확정하기
-                    </Button>
-                </DialogActions>
-            </Dialog>
-
             <Dialog
                 open={msgOpen}
                 onClose={() => {
@@ -725,26 +723,25 @@ export default function AppointmentPanel({ lead }: { lead: Lead }) {
                 maxWidth="sm"
             >
                 <DialogTitle sx={{ pr: 6 }}>
-                    문자 템플릿
+                    {msgMode === "propose" ? "제안 문자 템플릿" : "확정 문자 템플릿"}
                     <IconButton
                         aria-label="닫기"
                         onClick={() => {
                             setMsgOpen(false);
                             setMsgTarget(null);
+
                         }}
                         disabled={loading}
-                        sx={{
-                            position: "absolute",
-                            right: 8,
-                            top: 8,
-                        }}
+                        sx={{ position: "absolute", right: 8, top: 8 }}
                     >
                         <CloseIcon />
                     </IconButton>
                 </DialogTitle>
                 <DialogContent>
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                        문구를 확인한 뒤 실제 발송 처리 후 "대기 상태로 변경"을 눌러 주세요.
+                        {msgMode === "propose"
+                            ? '문구를 확인한 뒤 실제 발송 처리 후 "대기 상태로 변경"을 눌러 주세요.'
+                            : '문구를 확인한 뒤 실제 발송 처리 후 "확정 상태로 변경"을 눌러 주세요.'}
                     </Typography>
 
                     <TextField
@@ -780,16 +777,26 @@ export default function AppointmentPanel({ lead }: { lead: Lead }) {
                         전송
                     </Button>
 
-                    <Button
-                        variant="contained"
-                        disabled={!msgTarget || loading}
-                        onClick={() => {
-                            if (!msgTarget) return;
-                            markCandidatePending(msgTarget.id);
-                        }}
-                    >
-                        대기 상태로 변경
-                    </Button>
+                    {msgMode === "propose" ? (
+                        <Button
+                            variant="contained"
+                            disabled={!canMarkPendingFromDialog || loading}
+                            onClick={() => {
+                                if (!msgTarget) return;
+                                markCandidatePending(msgTarget.id);
+                            }}
+                        >
+                            대기 상태로 변경
+                        </Button>
+                    ) : (
+                        <Button
+                            variant="contained"
+                            disabled={!msgTarget || loading || msgTarget.status !== "CUSTOMER_CONFIRMED"}
+                            onClick={confirmSelected}
+                        >
+                            확정 상태로 변경
+                        </Button>
+                    )}
                 </DialogActions>
             </Dialog>
 

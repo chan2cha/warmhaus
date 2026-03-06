@@ -32,11 +32,10 @@ export async function POST(
 
         if (apptErr) throw apptErr;
         if (!appointment) {
-            return NextResponse.json({ error: "appointment not found" }, { status: 404 });
-        }
-
-        if (appointment.status === "CANCELED") {
-            return NextResponse.json({ appointment });
+            return NextResponse.json(
+                { error: "appointment not found" },
+                { status: 404 }
+            );
         }
 
         if (appointment.status === "DONE") {
@@ -46,17 +45,22 @@ export async function POST(
             );
         }
 
-        const { data: updatedAppt, error: updErr } = await supabase
-            .from("appointments")
-            .update({
-                status: "CANCELED",
-                cancel_reason: reason,
-            })
-            .eq("id", appointmentId)
-            .select("*")
-            .single();
+        let updatedAppointment = appointment;
 
-        if (updErr) throw updErr;
+        if (appointment.status !== "CANCELED") {
+            const { data: updatedAppt, error: updErr } = await supabase
+                .from("appointments")
+                .update({
+                    status: "CANCELED",
+                    cancel_reason: reason,
+                })
+                .eq("id", appointmentId)
+                .select("*")
+                .single();
+
+            if (updErr) throw updErr;
+            updatedAppointment = updatedAppt;
+        }
 
         const { error: leadErr } = await supabase
             .from("leads")
@@ -67,9 +71,36 @@ export async function POST(
 
         if (leadErr) throw leadErr;
 
+        // 후보 전부 PROPOSED 로 복구
+        const { error: restoreCandidatesErr } = await supabase
+            .from("appointment_candidates")
+            .update({
+                status: "PROPOSED",
+            })
+            .eq("lead_id", leadId)
+            .in("status", [
+                "PENDING",
+                "CUSTOMER_CONFIRMED",
+                "CUSTOMER_DECLINED",
+                "CONFIRMED",
+                "CANCELED",
+            ]);
+
+        if (restoreCandidatesErr) throw restoreCandidatesErr;
+
+        const { data: candidates, error: candErr } = await supabase
+            .from("appointment_candidates")
+            .select("*")
+            .eq("lead_id", leadId)
+            .order("priority", { ascending: true })
+            .order("start_at", { ascending: true });
+
+        if (candErr) throw candErr;
+
         return NextResponse.json({
             ok: true,
-            appointment: updatedAppt,
+            appointment: updatedAppointment,
+            candidates: candidates ?? [],
         });
     } catch (e: any) {
         return NextResponse.json(
