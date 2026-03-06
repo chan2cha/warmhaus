@@ -197,12 +197,19 @@ export function PreferredSlotsPicker<T extends FormValuesLike>({
 
                         <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="ko">
                             <DatePicker
+
                                 label="희망 날짜 선택"
                                 value={selectedDate}
                                 onChange={(v) => setSelectedDate(v)}
                                 disablePast
                                 format="YYYY-MM-DD"
+                              localeText={{
+                                 toolbarTitle: "날짜 선택"
+                              }}
                                 slotProps={{
+                                    toolbar:{
+                                        toolbarFormat: "YYYY년 M월 D일"
+                                    },
                                     textField: {
                                         fullWidth: true,
                                         size: "small",
