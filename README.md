@@ -42,27 +42,27 @@ Warmhaus Lead OS는 인테리어 상담/견적 문의를 온라인 폼으로 접
 
 ### Client Home
 
-![Client Home](docs/assets/screenshots/client-home.png)
+<img src="docs/assets/screenshots/client-home.png" alt="Client Home" width="320" />
 
 ### Client Form
 
-![Client Form](docs/assets/screenshots/client-form-stepper.png)
+<img src="docs/assets/screenshots/client-form-stepper.png" alt="Client Form" width="320" />
 
 ### Admin Inbox
 
-![Admin Inbox](docs/assets/screenshots/admin-inbox.png)
+<img src="docs/assets/screenshots/admin-inbox.png" alt="Admin Inbox" width="320" />
 
 ### Lead Detail
 
-![Lead Detail](docs/assets/screenshots/lead-detail.png)
+<img src="docs/assets/screenshots/lead-detail.png" alt="Lead Detail" width="320" />
 
 ### Admin Notice
 
-![Admin Notice](docs/assets/screenshots/admin-notice.png)
+<img src="docs/assets/screenshots/admin-notice.png" alt="Admin Notice" width="320" />
 
 ### Admin Rules
 
-![Admin Rules](docs/assets/screenshots/admin-rules.png)
+<img src="docs/assets/screenshots/admin-rules.png" alt="Admin Rules" width="320" />
 
 캡처 파일이 아직 없으면 GitHub에서는 깨진 이미지로 보일 수 있습니다.  
 이미지를 추가하는 즉시 README에 반영됩니다.
